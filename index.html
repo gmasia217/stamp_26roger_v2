@@ -20,7 +20,6 @@
   --blu:#5c8aff; --blu2:#8fb1ff;
   --ylw:#e2e8f0; --ylw2:#ffffff;
   
-  /* 히트맵 좌석 색상: 노란색/주황색 계열로 변경 */
   --seat1:#fff59d; 
   --seat2:#ffd54f; 
   --seat3:#ffc107; 
@@ -67,20 +66,19 @@ body { background:var(--bg); color:var(--txt); font-family:'Pretendard', sans-se
 .btn.grn { background:var(--grn); border-color:var(--grn); color:#000; font-weight:700; }
 .flex-between { display:flex; justify-content:space-between; align-items:center; }
 
-/* BOX SELECTORS (배율, 유형 선택 등) */
+/* BOX SELECTORS */
 .seg-group { display:flex; gap:8px; }
 .seg-item { flex:1; text-align:center; background:var(--bg3); border:1px solid var(--brd2); border-radius:6px; cursor:pointer; color:var(--txt3); padding:10px 0; transition:0.2s; font-size:13px; font-weight:600; }
 .seg-item input { display:none; }
 .seg-item.active.red { background:rgba(0,229,255,0.1); border-color:var(--red); color:var(--red); }
 .seg-item.active.grn { background:rgba(255,204,0,0.1); border-color:var(--grn); color:var(--grn); }
 
-/* TABLE (관극 기록) - 가로 스크롤 및 Sticky 틀 고정 */
+/* TABLE (관극 기록 & 할인권) */
 .twrap { overflow-x:auto; margin:0 -16px; padding:0 16px; -webkit-overflow-scrolling: touch; }
 table.record-tb { width:max-content; min-width:100%; border-collapse:separate; border-spacing:0; border:1px solid var(--brd); border-left:0; border-top:0; }
-.record-tb th, .record-tb td { padding:8px 6px; border-bottom:1px solid var(--brd); border-right:1px solid var(--brd); text-align:center; white-space:nowrap; font-size:12px; }
+.record-tb th, .record-tb td { padding:8px 6px; border-bottom:1px solid var(--brd); border-right:1px solid var(--brd); text-align:center; white-space:nowrap; font-size:12px; vertical-align:middle; }
 .record-tb thead th { border-top:1px solid var(--brd); background:var(--bg4); position:sticky; top:0; z-index:21; font-size:10px; color:var(--txt3); }
 
-/* 고정(Sticky) 열 설정 */
 .st-date { position:sticky; left:0; z-index:20; background:var(--bg2); border-left:1px solid var(--brd); min-width:55px; max-width:55px; }
 .st-time { position:sticky; left:55px; z-index:20; background:var(--bg2); min-width:45px; max-width:45px; }
 .st-cast { position:sticky; left:100px; z-index:20; background:var(--bg2); min-width:85px; max-width:85px; border-right:2px solid var(--red) !important; overflow:hidden; text-overflow:ellipsis; }
@@ -103,9 +101,10 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .cal-filter-btn.active { background:var(--bg4); border-color:var(--txt2); color:var(--txt); font-weight:600; }
 
 .cal-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-.cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:1px; position:relative; background:var(--brd); border:1px solid var(--brd); border-radius:4px; overflow:hidden;}
+/* 모바일 그리드 튀어나감 방지를 위한 minmax(0, 1fr) 적용 */
+.cal-grid { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:1px; position:relative; background:var(--brd); border:1px solid var(--brd); border-radius:4px; overflow:hidden;}
 .cal-dow { text-align:center; font-size:11px; font-weight:700; color:var(--txt3); padding:8px 0; background:var(--bg2); }
-.cal-day { min-height:100px; background:var(--bg); padding:6px 4px; cursor:pointer; position:relative; display:flex; flex-direction:column; align-items:flex-start; transition:background 0.15s; }
+.cal-day { min-height:100px; min-width:0; background:var(--bg); padding:6px 4px; cursor:pointer; position:relative; display:flex; flex-direction:column; align-items:flex-start; transition:background 0.15s; }
 .cal-day.today { background:rgba(255,204,0,.05); border:1px solid var(--grn); }
 .cal-day.empty { background:var(--bg2); cursor:default; }
 .cal-day-num { font-size:12px; font-weight:700; color:var(--txt3); margin-bottom:4px; padding-left:2px; }
@@ -115,7 +114,8 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .cs-chip { width:100%; text-align:left; padding:4px; border-radius:4px; margin-top:4px; background:transparent; border:1px solid transparent; }
 .cs-time { font-size:11px; font-weight:700; color:var(--txt); }
 .cs-time::before { content: '• '; }
-.cs-cast { font-size:10px; color:var(--txt3); margin-top:2px; padding-left:8px; word-break:keep-all; }
+/* 들여쓰기 없애고 텍스트 말림 방지 */
+.cs-cast { font-size:10px; color:var(--txt3); margin-top:2px; padding-left:0; word-break:break-all; white-space:normal; line-height:1.2; }
 .cs-chip.booked { background:rgba(0, 229, 255, 0.1); border-color:var(--red); }
 .cs-chip.booked .cs-time, .cs-chip.booked .cs-cast { color:var(--red); }
 
@@ -147,8 +147,9 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 <div id="app">
   <div class="page active" id="page-record">
     <div style="text-align:center; margin-bottom:16px; position:relative;">
-      <img src="roger_logo.png" alt="ROGER" style="height:46px; object-fit:contain;">
+      <img src="roger_logo.png" alt="ROGER" style="height:55px; object-fit:contain;">
     </div>
+    <hr style="border:none; height:1px; background:var(--red3); opacity:0.3; margin: 0 10% 16px 10%;">
     
     <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
       <button class="btn prim sm" onclick="openRecordModal()" style="padding:6px 12px; font-size:13px;">+ 회차 추가</button>
@@ -186,15 +187,15 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
   <div class="page" id="page-coupon">
     <div class="page-title">할인권 및 도장판</div>
     
-    <div class="card">
-      <div style="background:var(--bg3); border:1px solid var(--brd2); border-radius:8px; padding:12px; margin-bottom:16px;">
-        <div style="font-weight:700; color:var(--red3); margin-bottom:6px; font-size:13px;">🎁 재관람 혜택</div>
-        <div style="font-size:12px; color:var(--txt2); line-height:1.6;">
-          • 3회 관람 시 : 50% 할인권<br>
-          • 7회 관람 시 : 실황 OST
-        </div>
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:700; color:var(--red3); margin-bottom:8px; font-size:13px;">🎁 재관람 혜택</div>
+      <div style="font-size:12px; color:var(--txt2); line-height:1.6;">
+        • 3회 관람 시 : 50% 할인권<br>
+        • 7회 관람 시 : 실황 OST
       </div>
+    </div>
 
+    <div class="card">
       <div class="flex-between" style="margin-bottom:12px;">
         <div class="card-title" style="margin:0;">지갑 현황</div>
         <button class="btn grn sm" onclick="openWalletModal()">+ 추가/차감</button>
@@ -205,10 +206,12 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
         ▶ 할인권 상세 기록 (접기/펴기)
       </div>
       <div id="wallet-history" class="collapsible-content">
-        <table class="record-tb" style="width:100%; font-size:11px; border-left:1px solid var(--brd);">
-          <thead><tr><th>날짜</th><th>유형</th><th>내역</th><th>메모</th><th>순서 및 관리</th></tr></thead>
-          <tbody id="wallet-history-body"></tbody>
-        </table>
+        <div class="twrap" style="margin:0; padding:0;">
+          <table class="record-tb" style="width:100%; font-size:11px;">
+            <thead><tr><th>날짜</th><th>유형</th><th>재관</th><th>창산</th><th>40%</th><th>50%</th><th>증빙</th><th style="min-width:100px;">메모</th><th>순서 및 관리</th></tr></thead>
+            <tbody id="wallet-history-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -245,16 +248,16 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     <div class="page-title">설정</div>
     <div class="card">
       <div class="card-title">데이터 동기화</div>
-      <div class="flex-between" style="margin-bottom:12px; border-bottom:1px solid var(--brd2); padding-bottom:12px;">
+      <div class="flex-between" style="margin-bottom:12px; border-bottom:1px solid var(--brd2); padding-bottom:16px;">
         <div>
-          <div style="font-size:13px; margin-bottom:6px;">스케줄 업데이트</div>
+          <div style="font-size:13px; margin-bottom:8px;">스케줄 업데이트</div>
           <div id="set-sch-time" style="font-size:10px; color:var(--txt4);">확인 중...</div>
         </div>
         <button class="btn sm" onclick="fetchSchedule(true)">새로고침</button>
       </div>
-      <div class="flex-between" style="padding-top:6px;">
+      <div class="flex-between" style="padding-top:8px;">
         <div>
-          <div style="font-size:13px; margin-bottom:6px;">이벤트 업데이트</div>
+          <div style="font-size:13px; margin-bottom:8px;">이벤트 업데이트</div>
           <div id="set-evt-time" style="font-size:10px; color:var(--txt4);">확인 중...</div>
         </div>
         <button class="btn sm" onclick="fetchEvents(true)">새로고침</button>
@@ -352,7 +355,11 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
       </div>
     </div>
 
-    <div id="wm-coupon-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;"></div>
+    <div class="fg">
+      <label class="flbl">수량</label>
+      <div id="wm-coupon-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;"></div>
+    </div>
+    
     <div class="fg"><label class="flbl">메모</label><input type="text" id="wm-memo" class="finput"></div>
     <div style="display:flex; gap:10px; margin-top:20px;">
       <button class="btn" style="flex:1;" onclick="closeModal('modal-wallet')">취소</button>
@@ -379,7 +386,6 @@ const CONFIG = {
     { name:'트리플적립',   startDate:'2026-04-07', endDate:'2026-04-12', color:'#F59E0B' }
   ],
   
-  // 할인권 옵션 업데이트 (증빙/할인 없는 권종은 useWallet X)
   DISCOUNTS: [
     { label: "없음", value: "" },
     { label: "프리뷰", value: "프리뷰" },
@@ -411,12 +417,11 @@ const CONFIG = {
 let state = {
   records: [], 
   boards: [{ id: "b1", name: "1번", initial: 0, active: true }],
-  wallet: [], // { id, date, type, items, memo, order: 0 }
+  wallet: [], 
   schedule: [],
   events: []
 };
 
-// 캘린더 필터 상태 관리 객체
 let calFilters = { cast1: [], cast2: [] }; 
 
 function loadState() {
@@ -431,9 +436,7 @@ function loadState() {
   }
 }
 
-function saveState() {
-  localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state));
-}
+function saveState() { localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state)); }
 function uuid() { return Math.random().toString(36).substr(2, 9); }
 function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
@@ -469,24 +472,18 @@ function renderRecords() {
   thHtml += `<th>관리</th></tr>`;
   document.getElementById('record-thead').innerHTML = thHtml;
 
-  // 정렬
   const sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  
-  // 누적 도장 계산을 위한 준비
   let boardCum = {};
   state.boards.forEach(b => boardCum[b.id] = b.initial || 0);
 
-  // 순차적으로 돌면서 해당 회차 시점의 누적 도장 계산
   sorted.forEach(r => {
     r._cum = {};
     r._isMilestone = {};
     state.boards.forEach(b => {
       if (r.boards && r.boards[b.id]) {
         let before = boardCum[b.id];
-        boardCum[b.id] += r.boards[b.id]; // 이번 적립량 더하기
+        boardCum[b.id] += r.boards[b.id]; 
         r._cum[b.id] = boardCum[b.id];
-        
-        // 3칸, 7칸 보상 도달 체크
         CONFIG.STAMP_MILESTONES.forEach(m => {
           if (before < m && boardCum[b.id] >= m) r._isMilestone[b.id] = true;
         });
@@ -512,7 +509,7 @@ function renderRecords() {
       const stamped = r.boards && r.boards[b.id] ? r.boards[b.id] : 0;
       if (stamped > 0) {
         const icon = r._isMilestone[b.id] ? '🎁' : '';
-        rowHtml += `<td style="color:var(--red); line-height:1.4;">${stamped}<br><span style="font-size:10px; color:var(--txt3);">(${r._cum[b.id]}${icon})</span></td>`;
+        rowHtml += `<td style="color:var(--red); line-height:1.4; font-weight:700;">${stamped}<br><span style="font-size:10px; color:var(--txt3); font-weight:400;">(${r._cum[b.id]}${icon})</span></td>`;
       } else {
         rowHtml += `<td style="color:var(--txt4)">-</td>`;
       }
@@ -593,12 +590,14 @@ function onTimeChange() {
 }
 
 function renderBoardCheckboxesInModal() {
-  const checked = Array.from(document.querySelectorAll('.rm-board-chk:checked')).map(c => c.value);
-  document.getElementById('rm-boards').innerHTML = state.boards.map(b => 
-    `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
-      <input type="checkbox" class="rm-board-chk" value="${b.id}" ${checked.includes(b.id) ? 'checked' : ''}> ${b.name}
-    </label>`
-  ).join('');
+  const checked = document.querySelector('input[name="rm-board-radio"]:checked')?.value;
+  // 단일 선택 라디오 버튼으로 렌더링
+  document.getElementById('rm-boards').innerHTML = state.boards.map((b, idx) => {
+    const isChecked = checked ? (checked === b.id) : false;
+    return `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+      <input type="radio" name="rm-board-radio" value="${b.id}" ${isChecked ? 'checked' : ''}> ${b.name}
+    </label>`;
+  }).join('');
 }
 
 function addBoardFromModal() {
@@ -608,10 +607,10 @@ function addBoardFromModal() {
   state.boards.push({ id: newId, name: newName, initial: 0, active: true });
   saveState();
   document.getElementById('rm-new-board-name').value = '';
-  renderBoardCheckboxesInModal();
   
-  const newChk = document.querySelector(`.rm-board-chk[value="${newId}"]`);
-  if (newChk) newChk.checked = true;
+  // 새로 추가된 보드를 선택 상태로 만들기 위한 처리
+  document.getElementById('rm-boards').innerHTML += `<label style="display:none;"><input type="radio" name="rm-board-radio" value="${newId}" checked></label>`;
+  renderBoardCheckboxesInModal(); 
   renderRecords(); 
 }
 
@@ -628,7 +627,8 @@ function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-num').value = "";
   document.getElementById('rm-memo').value = "";
 
-  selectMult(1); // 배율 초기화
+  selectMult(1); 
+  // 새 기록일 때는 라디오 초기화 (아무것도 안 찍힌 상태를 허용하거나 첫번째 체크하려면 설정)
   renderBoardCheckboxesInModal(); 
 
   openModal('modal-record');
@@ -638,9 +638,9 @@ function saveRecord() {
   const id = document.getElementById('rm-id').value || uuid();
   const boardsData = {};
   
-  // 배율 적용
   const mult = parseInt(document.querySelector('input[name="rm-mult"]:checked').value) || 1;
-  document.querySelectorAll('.rm-board-chk:checked').forEach(chk => { boardsData[chk.value] = mult; });
+  const selectedBoard = document.querySelector('input[name="rm-board-radio"]:checked');
+  if(selectedBoard) { boardsData[selectedBoard.value] = mult; }
 
   const record = {
     id: id,
@@ -687,25 +687,27 @@ function editRecord(id) {
   document.getElementById('rm-num').value = r.seatNum || "";
   document.getElementById('rm-memo').value = r.memo || "";
 
-  // 배율 유추 (첫번째 체크된 보드의 값을 기준으로 세팅)
   let assumedMult = 1;
+  let selectedId = null;
   if (r.boards) {
     const keys = Object.keys(r.boards);
-    if (keys.length > 0) assumedMult = r.boards[keys[0]];
+    if (keys.length > 0) {
+      selectedId = keys[0];
+      assumedMult = r.boards[selectedId];
+    }
   }
   if ([1,2,3].includes(assumedMult)) selectMult(assumedMult);
   else selectMult(1);
 
+  // 미리 가상의 요소를 선택상태로 만들어서 렌더러가 반영하게 함
+  document.getElementById('rm-boards').innerHTML = `<label style="display:none;"><input type="radio" name="rm-board-radio" value="${selectedId}" checked></label>`;
   renderBoardCheckboxesInModal(); 
-  document.querySelectorAll('.rm-board-chk').forEach(chk => {
-    chk.checked = r.boards && r.boards[chk.value] > 0;
-  });
 }
 
 function deleteRecord(id) {
   if(confirm("기록을 삭제하시겠습니까?")) {
     state.records = state.records.filter(r => r.id !== id);
-    saveState(); renderRecords(); renderCalendar();
+    saveState(); renderRecords(); renderCalendar(); renderCoupons();
   }
 }
 
@@ -826,7 +828,7 @@ function renderCalendar() {
 
       dayItems.sort((a,b) => a.time.localeCompare(b.time));
 
-      // 줄바꿈 + 풀네임
+      // 들여쓰기 뺀 풀네임 표시 
       let chipsHtml = dayItems.map(i => {
         const cls = i.isBooked ? 'booked' : '';
         return `<div class="cs-chip ${cls}">
@@ -880,7 +882,6 @@ function calculateWalletBalance() {
   return balances;
 }
 
-// 할인권 상세 기록 순서 변경 함수
 function moveWalletOrder(id, delta) {
   const item = state.wallet.find(w => w.id === id);
   if (item) {
@@ -899,7 +900,7 @@ function renderCoupons() {
     </div>
   `).join('');
 
-  // 1. 수동 등록 기록과 자동 연동(관극) 기록을 합침
+  // 1. 수동 등록 기록과 자동 연동(관극) 기록 합침
   let combinedWallet = [];
   state.wallet.forEach(w => combinedWallet.push({...w, isAuto: false}));
   
@@ -908,23 +909,27 @@ function renderCoupons() {
     if (discDef && discDef.useWallet) {
       let items = {};
       items[discDef.useWallet] = 1;
+      
+      const dateParts = r.date.split('-');
+      const m = parseInt(dateParts[1], 10);
+      const d = parseInt(dateParts[2], 10);
+      
       combinedWallet.push({
         id: 'auto_' + r.id,
         date: r.date,
         time: r.time,
         type: 'sub',
         items: items,
-        memo: `[관극] ${r.cast1}·${r.cast2}`,
+        memo: `${m}/${d} ${r.time} 관극`, // 짧은 연동 메모
         isAuto: true,
-        order: 0 // 자동은 기본 0 순서 부여
+        order: 0 
       });
     }
   });
 
-  // 2. 시간순 (최신순) 정렬, 단 같은 날짜 내에서는 order 값에 따라 사용자가 순서 조정 가능
+  // 정렬: 날짜 최신순 -> 사용자 order -> 관극 시간
   combinedWallet.sort((a,b) => {
-    if (a.date !== b.date) return b.date.localeCompare(a.date); // 날짜 최신순
-    // 날짜가 같으면 사용자가 정한 order 값 우선, 그 다음은 관극 시간 등
+    if (a.date !== b.date) return b.date.localeCompare(a.date); 
     const orderDiff = (b.order || 0) - (a.order || 0);
     if (orderDiff !== 0) return orderDiff;
     return (b.time || "").localeCompare(a.time || "");
@@ -932,12 +937,27 @@ function renderCoupons() {
 
   const histTbody = document.getElementById('wallet-history-body');
   if(combinedWallet.length === 0) {
-    histTbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
+    histTbody.innerHTML = `<tr><td colspan="9" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
   } else {
+    // 요일 구하기 유틸
+    const getDow = (dStr) => { const d = new Date(dStr); return ['일','월','화','수','목','금','토'][d.getDay()]; };
+    
     histTbody.innerHTML = combinedWallet.map(w => {
-      let itemsStr = [];
+      const ds = w.date.split('-');
+      const dateDisp = `${parseInt(ds[1])}.${parseInt(ds[2])}(${getDow(w.date)})`;
+      
+      const isAdd = w.type === 'add';
+      const typeHtml = isAdd ? `<span style="color:var(--red3);">◆획득</span>` : `<span style="color:var(--txt);">사용</span>`;
+      
+      // 컬럼 분리
+      let colHtml = '';
       CONFIG.WALLET_FIELDS.forEach(f => {
-        if(w.items[f.id]) itemsStr.push(`${f.label} ${w.items[f.id]}`);
+        let valStr = '';
+        if (w.items[f.id]) {
+          const val = w.items[f.id];
+          valStr = isAdd ? `<span style="color:var(--grn2); font-weight:700;">+${val}</span>` : `<span style="color:var(--red3); font-weight:700;">-${val}</span>`;
+        }
+        colHtml += `<td>${valStr}</td>`;
       });
       
       let ctrlHtml = '';
@@ -953,10 +973,10 @@ function renderCoupons() {
       }
 
       return `<tr>
-        <td>${w.date.substring(5).replace('-','.')}</td>
-        <td style="color:${w.type==='add' ? 'var(--grn)' : 'var(--red3)'}">${w.type==='add'?'획득':'사용'}</td>
-        <td style="text-align:left;">${itemsStr.join(', ')}</td>
-        <td style="text-align:left; color:var(--txt4);">${w.memo}</td>
+        <td style="font-weight:600;">${dateDisp}</td>
+        <td>${typeHtml}</td>
+        ${colHtml}
+        <td style="text-align:left; color:var(--txt3); font-size:11px; white-space:nowrap;">${w.memo}</td>
         <td style="white-space:nowrap;">${ctrlHtml}</td>
       </tr>`;
     }).join('');
@@ -1005,12 +1025,12 @@ function saveWallet() {
     type: document.querySelector('input[name="wm-type"]:checked').value,
     memo: document.getElementById('wm-memo').value, 
     items: items,
-    order: 0 // 기본 순서 0
+    order: 0 
   };
 
   const idx = state.wallet.findIndex(w => w.id === id);
   if(idx >= 0) {
-    entry.order = state.wallet[idx].order || 0; // 기존 순서 유지
+    entry.order = state.wallet[idx].order || 0; 
     state.wallet[idx] = entry; 
   } else {
     state.wallet.push(entry);
@@ -1089,9 +1109,9 @@ function renderStats() {
       const cnt = state.records.filter(r => r[castKey] === actor).length;
       actorStatsHtml += `<tr>`;
       
-      // 같은 배역명은 셀 병합 (첫번째 배우일 때만 출력)
+      // 같은 배역은 셀 병합
       if (aIdx === 0) {
-        actorStatsHtml += `<td rowspan="${role.actors.length}" style="font-weight:700; color:var(--txt2); vertical-align:middle;">${role.label}</td>`;
+        actorStatsHtml += `<td rowspan="${role.actors.length}" style="font-weight:700; color:var(--txt2); vertical-align:middle; background:var(--bg3); border-right:1px solid var(--brd);">${role.label}</td>`;
       }
       
       actorStatsHtml += `
