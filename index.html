@@ -16,8 +16,8 @@
   --bg:#071120; --bg2:#0d1b33; --bg3:#152745; --bg4:#1e3559;
   --brd:#2a4066; --brd2:#3c5685;
   --txt:#ffffff; --txt2:#e0e7f1; --txt3:#aab7cc; --txt4:#7b8ba6; --dim:#576885;
-  --red:#00e5ff; --red2:#00b8cc; --red3:#66eeff; --red4:#00e5ff; /* 기존 시안색 포인트 */
-  --grn:#ffcc00; --grn2:#ffdb4d; /* 기존 노란색 포인트 */
+  --red:#00e5ff; --red2:#00b8cc; --red3:#66eeff; --red4:#00e5ff;
+  --grn:#ffcc00; --grn2:#ffdb4d;
   --blu:#5c8aff; --blu2:#8fb1ff;
   --ylw:#e2e8f0; --ylw2:#ffffff;
   --seat1:#1a3570; --seat2:#1e52a0; --seat3:#2e70cc; --seat4:#4490e0; --seat5:#6ab0ff;
@@ -59,13 +59,12 @@ body { background:var(--bg); color:var(--txt); font-family:'Pretendard', sans-se
 .btn.sm { padding:4px 10px; font-size:11px; }
 .btn.grn { background:var(--grn); border-color:var(--grn); color:#000; font-weight:700; }
 .flex-between { display:flex; justify-content:space-between; align-items:center; }
- 
+
 /* TABLE (관극 기록) - Sticky Columns 적용 */
 .twrap { overflow-x:auto; margin:0 -16px; padding:0 16px; }
 table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border:1px solid var(--brd); }
 .record-tb th, .record-tb td { padding:8px 6px; border-bottom:1px solid var(--brd); border-right:1px solid var(--brd); text-align:center; white-space:nowrap; font-size:12px; }
 .record-tb thead th { background:var(--bg4); position:sticky; top:0; z-index:21; font-size:10px; color:var(--txt3); }
-/* 고정 열 1: 날짜, 고정 열 2: 캐스트 */
 .record-tb th:nth-child(1), .record-tb td:nth-child(1) { position:sticky; left:0; z-index:20; background:var(--bg4); }
 .record-tb th:nth-child(2), .record-tb td:nth-child(2) { position:sticky; left:70px; z-index:20; background:var(--bg4); border-right:2px solid var(--red); }
 .record-tb td:nth-child(1), .record-tb td:nth-child(2) { background:var(--bg2); }
@@ -81,16 +80,17 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
 .modal { background:var(--bg2); border-top:2px solid var(--red); width:100%; max-width:520px; max-height:90vh; overflow-y:auto; padding:20px; border-radius:16px 16px 0 0; animation:slideUp 0.3s ease; }
 @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
 
-/* CALENDAR */
+/* CALENDAR & EVENTS */
 .cal-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-.cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
+.cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; position:relative; }
 .cal-dow { text-align:center; font-size:10px; color:var(--txt3); padding:4px 0; }
-.cal-day { min-height:50px; background:var(--bg3); border-radius:4px; padding:4px; cursor:pointer; position:relative; overflow:hidden; border:1px solid transparent; }
-.cal-day.today { border-color:var(--grn); }
+.cal-day { min-height:54px; background:var(--bg3); border-radius:4px; padding:4px 3px 3px; cursor:pointer; position:relative; overflow:hidden; border:1px solid transparent; display:flex; flex-direction:column; align-items:flex-start; transition:background 0.15s; }
+.cal-day.today { border-color:var(--grn); background:rgba(255,204,0,.1); }
 .cal-day.sun { color:var(--red3); }
-.cal-day-num { font-size:11px; font-weight:700; display:block; margin-bottom:2px; }
-.cs-chip { font-size:9px; background:var(--bg4); color:var(--txt2); padding:2px; margin-top:2px; border-radius:2px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cs-chip.booked { background:rgba(0,229,255,0.15); color:var(--red); border:1px solid var(--red); }
+.cal-day.empty { background:transparent; border-color:transparent; cursor:default; }
+.cal-day-num { font-size:11px; font-weight:700; width:100%; text-align:center; display:block; line-height:1.3; }
+.cs-chip { font-size:9px; background:var(--bg4); color:var(--txt2); padding:2px 3px; margin-top:2px; border-radius:2px; width:100%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cs-chip.booked { background:rgba(0,229,255,0.15); color:var(--red); border:1px solid var(--red); font-weight:600; }
 
 /* WALLET & STAMPS */
 .wallet-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:16px; }
@@ -103,10 +103,16 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
 .heatmap-wrap { display:flex; gap:10px; justify-content:center; overflow-x:auto; padding-bottom:10px; }
 .zone-col { display:flex; flex-direction:column; gap:2px; align-items:center; }
 .seat-row { display:flex; gap:2px; align-items:center; }
-.seat-cell { width:12px; height:12px; background:var(--bg4); border-radius:2px; }
-.seat-cell.v1 { background:var(--seat1); } .seat-cell.v2 { background:var(--seat2); }
-.seat-cell.v3 { background:var(--seat3); } .seat-cell.v4 { background:var(--seat4); }
-.seat-cell.v5 { background:var(--seat5); }
+.row-label { font-size:8px; width:16px; text-align:right; color:var(--txt4); margin-right:2px; white-space:nowrap; }
+.seat-cell { width:12px; height:12px; background:var(--bg4); border-radius:2px; border:1px solid transparent; flex-shrink:0; }
+.seat-cell.v1 { background:var(--seat1); border-color:var(--seat1); } 
+.seat-cell.v2 { background:var(--seat2); border-color:var(--seat2); }
+.seat-cell.v3 { background:var(--seat3); border-color:var(--seat3); } 
+.seat-cell.v4 { background:var(--seat4); border-color:var(--seat4); }
+.seat-cell.v5 { background:var(--seat5); border-color:var(--seat5); }
+.heatmap-legend { display:flex; gap:10px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--txt2); }
+.legend-dot { width:12px; height:12px; border-radius:2px; }
 </style>
 </head>
 <body>
@@ -120,10 +126,8 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
     
     <div class="twrap">
       <table class="record-tb">
-        <thead id="record-thead">
-          </thead>
-        <tbody id="record-tbody">
-          </tbody>
+        <thead id="record-thead"></thead>
+        <tbody id="record-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -132,18 +136,17 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
     <div class="page-title">스케줄 달력</div>
     
     <div class="card" style="padding:12px;">
-      <div style="font-size:11px; color:var(--txt3); margin-bottom:10px;">
+      <div style="font-size:11px; color:var(--txt3); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <span id="cal-filter-display">캐스트 필터: 전체</span>
-        <button class="btn sm" style="float:right; padding:2px 6px;" onclick="changeCastFilter()">필터 변경</button>
+        <button class="btn sm" style="padding:2px 6px;" onclick="changeCastFilter()">필터 변경</button>
       </div>
       <div class="cal-nav">
         <button class="btn sm" onclick="changeMonth(-1)">‹</button>
-        <div id="cal-month-title" style="font-weight:700; font-size:16px;">2026.04</div>
+        <div id="cal-month-title" style="font-weight:700; font-size:16px;"></div>
         <button class="btn sm" onclick="changeMonth(1)">›</button>
       </div>
       <div id="cal-grid-container"></div>
     </div>
-    <div id="cal-detail-panel" style="margin-top:16px;"></div>
   </div>
 
   <div class="page" id="page-coupon">
@@ -187,6 +190,14 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
     <div class="card">
       <div class="card-title">좌석 히트맵</div>
       <div class="heatmap-wrap" id="heatmap-container"></div>
+      <div class="heatmap-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--bg4);"></div>0회</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--seat1);"></div>1회</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--seat2);"></div>2회</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--seat3);"></div>3회</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--seat4);"></div>4회</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--seat5);"></div>5회+</div>
+      </div>
     </div>
   </div>
 
@@ -247,8 +258,7 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
       </div>
     </div>
 
-    <div style="display:flex; gap:10px;" id="rm-cast-container">
-      </div>
+    <div style="display:flex; gap:10px;" id="rm-cast-container"></div>
 
     <div class="fg">
       <label class="flbl">할인 권종</label>
@@ -259,8 +269,8 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
       <label class="flbl">좌석 정보 (구역 / 열 / 번호)</label>
       <div style="display:flex; gap:10px;">
         <select id="rm-zone" class="fselect" style="flex:1;"><option value="">-</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select>
-        <input type="number" id="rm-row" class="finput" style="flex:1;" placeholder="열">
-        <input type="number" id="rm-num" class="finput" style="flex:1;" placeholder="번호">
+        <input type="number" id="rm-row" class="finput" style="flex:1;" placeholder="열" min="0">
+        <input type="number" id="rm-num" class="finput" style="flex:1;" placeholder="번호" min="1">
       </div>
     </div>
 
@@ -285,27 +295,13 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
   <div class="modal">
     <div class="page-title" id="wm-title" style="font-size:18px;">할인권 내역</div>
     <input type="hidden" id="wm-id">
-    
-    <div class="fg">
-      <label class="flbl">날짜</label>
-      <input type="date" id="wm-date" class="finput">
-    </div>
+    <div class="fg"><label class="flbl">날짜</label><input type="date" id="wm-date" class="finput"></div>
     <div class="fg">
       <label class="flbl">유형</label>
-      <select id="wm-type" class="fselect">
-        <option value="add">획득(+)</option>
-        <option value="sub">사용/차감(-)</option>
-      </select>
+      <select id="wm-type" class="fselect"><option value="add">획득(+)</option><option value="sub">사용/차감(-)</option></select>
     </div>
-    
-    <div id="wm-coupon-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-      </div>
-
-    <div class="fg">
-      <label class="flbl">메모</label>
-      <input type="text" id="wm-memo" class="finput">
-    </div>
-
+    <div id="wm-coupon-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;"></div>
+    <div class="fg"><label class="flbl">메모</label><input type="text" id="wm-memo" class="finput"></div>
     <div style="display:flex; gap:10px; margin-top:20px;">
       <button class="btn" style="flex:1;" onclick="closeModal('modal-wallet')">취소</button>
       <button class="btn grn" style="flex:1;" onclick="saveWallet()">저장</button>
@@ -321,24 +317,28 @@ const CONFIG = {
   SHOW_NAME: "라져",
   STORAGE_KEY: "musical_tracker_v3",
   
-  // 배역 설정 (캘린더 및 폼에 자동 반영)
+  // 배역 설정 (참고 코드의 라져 배역 그대로 반영)
   ROLES: [
     { id: "cast1", label: "스카일러", actors: ["주민진", "고상호", "기세중"] },
     { id: "cast2", label: "디디", actors: ["정휘", "이한솔", "박주혁"] }
   ],
   
-  // 할인 권종 (지갑 연동 로직 포함)
+  // 이벤트 설정 (캘린더 배너용)
+  EVENTS: [
+    { name:'스페셜커튼콜', startDate:'2026-03-31', endDate:'2026-04-05', color:'#8B5CF6' },
+    { name:'트리플적립',   startDate:'2026-04-07', endDate:'2026-04-12', color:'#F59E0B' }
+  ],
+  
   DISCOUNTS: [
     { label: "없음", value: "" },
     { label: "프리뷰", value: "프리뷰" },
-    { label: "재관할", value: "재관할", useWallet: "re" }, // 지갑 차감 키
+    { label: "재관할", value: "재관할", useWallet: "re" },
     { label: "창작산실할", value: "창작산실할", useWallet: "arko" },
     { label: "40% 할인권", value: "40%", useWallet: "d40" },
     { label: "50% 할인권", value: "50%", useWallet: "d50" },
     { label: "증빙 프리패스", value: "증빙", useWallet: "cert" }
   ],
   
-  // 지갑 (쿠폰) 필드 정의
   WALLET_FIELDS: [
     { id: "re", label: "재관람 할인표" },
     { id: "arko", label: "창작산실표" },
@@ -347,7 +347,6 @@ const CONFIG = {
     { id: "cert", label: "증빙 프리패스" }
   ],
 
-  // 도장판 마일스톤
   STAMP_MILESTONES: [3, 7]
 };
 
@@ -355,15 +354,14 @@ const CONFIG = {
 // 2. STATE MANAGEMENT
 // ============================================================
 let state = {
-  records: [], // { id, date, time, cast1, cast2, discount, seatZone, seatRow, seatNum, boards: { b1: 1 }, memo }
+  records: [], 
   boards: [{ id: "b1", name: "1", initial: 0, active: true }],
-  wallet: []   // { id, date, type(add/sub), items: { re: 1, d50: 0 }, memo }
+  wallet: []   
 };
 
 function loadState() {
   const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
   if(saved) state = JSON.parse(saved);
-  // Title update
   document.getElementById('app-title-display').textContent = `✈ ${CONFIG.SHOW_NAME} 기록`;
 }
 function saveState() {
@@ -386,31 +384,23 @@ function switchTab(tabId, btnEl) {
   if(tabId === 'coupon') renderCoupons();
   if(tabId === 'stats') renderStats();
 }
-
 function openModal(id) { document.getElementById(id).classList.add('show'); }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 function toggleCollapsible(id) { document.getElementById(id).classList.toggle('open'); }
 
 // ============================================================
-// 4. TAB 1: RECORD (관극 기록) - Sticky Columns & Cast
+// 4. TAB 1: RECORD (관극 기록)
 // ============================================================
 function renderRecords() {
-  // 1. 헤더 생성
-  let thHtml = `<tr>
-    <th style="min-width:70px;">날짜</th>
-    <th style="min-width:90px;">캐스트</th>
-    <th>시간</th><th>할인</th>`;
-  state.boards.forEach(b => {
-    thHtml += `<th style="color:var(--txt3); font-size:10px;">${b.name}</th>`;
-  });
+  let thHtml = `<tr><th style="min-width:70px;">날짜</th><th style="min-width:90px;">캐스트</th><th>시간</th><th>할인</th>`;
+  state.boards.forEach(b => { thHtml += `<th style="color:var(--txt3); font-size:10px;">${b.name}</th>`; });
   thHtml += `<th>좌석</th><th>관리</th></tr>`;
   document.getElementById('record-thead').innerHTML = thHtml;
 
-  // 2. 바디 생성 (날짜순 정렬)
   const sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   let tbHtml = sorted.map(r => {
-    const castStr = `${r.cast1[0]}·${r.cast2[0]}`; // 첫 글자만 표시 (공간 절약)
-    const seatStr = r.seatZone ? `${r.seatZone}-${r.seatRow}` : '-';
+    const castStr = `${(r.cast1||'-')[0]}·${(r.cast2||'-')[0]}`;
+    const seatStr = r.seatZone && r.seatRow !== "" ? `${r.seatZone}-${r.seatRow}` : '-';
     let rowHtml = `<tr>
       <td>${r.date.substring(5)}</td>
       <td style="font-weight:600; color:var(--red3);">${castStr}</td>
@@ -422,13 +412,11 @@ function renderRecords() {
       rowHtml += `<td style="color:${stamped ? 'var(--red)' : 'var(--txt4)'}">${stamped || '-'}</td>`;
     });
 
-    rowHtml += `
-      <td style="font-size:10px;">${seatStr}</td>
+    rowHtml += `<td style="font-size:10px;">${seatStr}</td>
       <td>
         <button class="btn sm" onclick="editRecord('${r.id}')" style="padding:2px 4px;">✎</button>
         <button class="btn sm" onclick="deleteRecord('${r.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
-      </td>
-    </tr>`;
+      </td></tr>`;
     return rowHtml;
   }).join('');
   
@@ -436,9 +424,7 @@ function renderRecords() {
   document.getElementById('record-tbody').innerHTML = tbHtml;
 }
 
-// 폼 초기화 로직
 function initRecordForm() {
-  // 캐스트 드롭다운 렌더링
   document.getElementById('rm-cast-container').innerHTML = CONFIG.ROLES.map((role, idx) => `
     <div class="fg" style="flex:1;">
       <label class="flbl">${role.label}</label>
@@ -448,11 +434,7 @@ function initRecordForm() {
       </select>
     </div>
   `).join('');
-
-  // 할인 드롭다운 렌더링
-  document.getElementById('rm-disc').innerHTML = CONFIG.DISCOUNTS.map(d => 
-    `<option value="${d.value}">${d.label}</option>`
-  ).join('');
+  document.getElementById('rm-disc').innerHTML = CONFIG.DISCOUNTS.map(d => `<option value="${d.value}">${d.label}</option>`).join('');
 }
 
 function openRecordModal(date = '') {
@@ -468,7 +450,6 @@ function openRecordModal(date = '') {
   document.getElementById('rm-num').value = "";
   document.getElementById('rm-memo').value = "";
 
-  // 도장판 체크박스
   document.getElementById('rm-boards').innerHTML = state.boards.map(b => 
     `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
       <input type="checkbox" class="rm-board-chk" value="${b.id}"> ${b.name}
@@ -481,9 +462,7 @@ function openRecordModal(date = '') {
 function saveRecord() {
   const id = document.getElementById('rm-id').value || uuid();
   const boardsData = {};
-  document.querySelectorAll('.rm-board-chk:checked').forEach(chk => {
-    boardsData[chk.value] = 1; // 기본 1개 적립
-  });
+  document.querySelectorAll('.rm-board-chk:checked').forEach(chk => { boardsData[chk.value] = 1; });
 
   const record = {
     id: id,
@@ -506,7 +485,7 @@ function saveRecord() {
   saveState();
   closeModal('modal-record');
   renderRecords();
-  renderCoupons(); // 지갑 변동 있을 수 있으므로
+  renderCoupons();
 }
 
 function editRecord(id) {
@@ -521,7 +500,7 @@ function editRecord(id) {
   document.getElementById('rm-cast2').value = r.cast2;
   document.getElementById('rm-disc').value = r.discount;
   document.getElementById('rm-zone').value = r.seatZone || "";
-  document.getElementById('rm-row').value = r.seatRow || "";
+  document.getElementById('rm-row').value = r.seatRow !== null ? r.seatRow : "";
   document.getElementById('rm-num').value = r.seatNum || "";
   document.getElementById('rm-memo').value = r.memo || "";
 
@@ -539,11 +518,11 @@ function deleteRecord(id) {
 }
 
 // ============================================================
-// 5. TAB 2: CALENDAR (달력)
+// 5. TAB 2: CALENDAR (이벤트 배너 추가)
 // ============================================================
 let curYear = new Date().getFullYear();
-let curMonth = new Date().getMonth(); // 0-11
-let calFilter = null; // null or array of actors
+let curMonth = new Date().getMonth(); 
+let calFilter = null; 
 
 function changeMonth(diff) {
   curMonth += diff;
@@ -553,7 +532,6 @@ function changeMonth(diff) {
 }
 
 function changeCastFilter() {
-  // 간단한 순환 필터 구현
   const actors = [...CONFIG.ROLES[0].actors, ...CONFIG.ROLES[1].actors];
   if(!calFilter) calFilter = actors[0];
   else {
@@ -569,71 +547,117 @@ function renderCalendar() {
   
   const firstDay = new Date(curYear, curMonth, 1).getDay();
   const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
-  
+  const totalCells = firstDay + daysInMonth;
+  const weeks = Math.ceil(totalCells / 7);
+  const monthStr = `${curYear}-${String(curMonth+1).padStart(2,'0')}`;
+  const monthStart = `${monthStr}-01`;
+  const monthEnd = `${monthStr}-${String(daysInMonth).padStart(2,'0')}`;
+
+  // 이벤트 배너 겹침 연산 (최대 3줄)
+  const segments = [];
+  CONFIG.EVENTS.forEach(ev => {
+    if (ev.endDate < monthStart || ev.startDate > monthEnd) return;
+    const clampedStart = ev.startDate < monthStart ? monthStart : ev.startDate;
+    const clampedEnd   = ev.endDate   > monthEnd   ? monthEnd   : ev.endDate;
+    const startCell = firstDay + parseInt(clampedStart.slice(8)) - 1;
+    const endCell   = firstDay + parseInt(clampedEnd.slice(8))   - 1;
+    
+    for (let w = Math.floor(startCell/7); w <= Math.floor(endCell/7); w++) {
+      const sc = Math.max(startCell, w*7) % 7;
+      const ec = Math.min(endCell,   w*7+6) % 7;
+      const used = segments.filter(s => s.week === w);
+      let row = 0;
+      while (row < 3) {
+        const conflict = used.filter(s => s.row === row).some(s => !(ec < s.startCol || sc > s.endCol));
+        if (!conflict) break;
+        row++;
+      }
+      if (row < 3) segments.push({ week: w, startCol: sc, endCol: ec, color: ev.color, name: ev.name, row });
+    }
+  });
+
   const dow = ['일','월','화','수','목','금','토'];
   let html = `<div class="cal-grid">`;
   dow.forEach(d => html += `<div class="cal-dow">${d}</div>`);
+  html += `</div>`; // header end
   
-  for(let i=0; i<firstDay; i++) html += `<div></div>`;
-  
-  for(let day=1; day<=daysInMonth; day++) {
-    const dateStr = `${curYear}-${String(curMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const isToday = dateStr === todayStr();
-    const isSun = new Date(curYear, curMonth, day).getDay() === 0;
-    
-    // 필터링 적용된 레코드
-    const dayRecs = state.records.filter(r => {
-      if(r.date !== dateStr) return false;
-      if(calFilter && r.cast1 !== calFilter && r.cast2 !== calFilter) return false;
-      return true;
-    });
+  for(let w=0; w<weeks; w++) {
+    const wSegs = segments.filter(s => s.week === w);
+    const maxRow = wSegs.length ? Math.max(...wSegs.map(s => s.row)) + 1 : 0;
+    const evHeight = maxRow * 16; 
 
-    let chipsHtml = dayRecs.map(r => `
-      <div class="cs-chip booked">${r.time[0]} ${r.cast1[0]}·${r.cast2[0]}</div>
-    `).join('');
+    html += `<div class="cal-grid" style="margin-bottom:2px;">`;
+    for(let col=0; col<7; col++) {
+      const cell = w * 7 + col;
+      const day = cell - firstDay + 1;
+      
+      if(cell < firstDay || day > daysInMonth) {
+        html += `<div class="cal-day empty"></div>`;
+        continue;
+      }
+      
+      const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`;
+      const isToday = dateStr === todayStr();
+      const isSun = new Date(curYear, curMonth, day).getDay() === 0;
+      
+      const dayRecs = state.records.filter(r => {
+        if(r.date !== dateStr) return false;
+        if(calFilter && r.cast1 !== calFilter && r.cast2 !== calFilter) return false;
+        return true;
+      });
 
-    html += `
-      <div class="cal-day ${isToday ? 'today' : ''} ${isSun ? 'sun' : ''}" onclick="openRecordModal('${dateStr}')">
+      let chipsHtml = dayRecs.map(r => `
+        <div class="cs-chip booked">${r.time[0]} ${(r.cast1||'-')[0]}·${(r.cast2||'-')[0]}</div>
+      `).join('');
+
+      html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSun ? 'sun' : ''}" onclick="openRecordModal('${dateStr}')">
         <span class="cal-day-num">${day}</span>
+        <div style="height:${evHeight}px; flex-shrink:0;"></div>
         ${chipsHtml}
-      </div>
-    `;
+      </div>`;
+    }
+
+    // 이벤트 배너 그리기
+    if (maxRow > 0) {
+      html += `<div style="position:absolute; top:20px; left:0; right:0; pointer-events:none;">`;
+      for (let row = 0; row < maxRow; row++) {
+        html += `<div style="position:relative; height:15px; margin-bottom:1px;">`;
+        wSegs.filter(s => s.row === row).forEach(s => {
+          const leftPct  = (s.startCol / 7 * 100).toFixed(2);
+          const widthPct = ((s.endCol - s.startCol + 1) / 7 * 100).toFixed(2);
+          html += `<div style="position:absolute; left:${leftPct}%; width:calc(${widthPct}% - 2px); height:13px; background:${s.color}; border-radius:2px; display:flex; align-items:center; padding:0 3px; overflow:hidden;">
+            <span style="font-size:8px; font-weight:700; color:#fff; white-space:nowrap;">${s.name}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
   }
-  html += `</div>`;
   document.getElementById('cal-grid-container').innerHTML = html;
 }
 
 // ============================================================
-// 6. TAB 3: COUPON & STAMPS (도장, 할인권)
+// 6. TAB 3: COUPON & STAMPS 
 // ============================================================
 function calculateWalletBalance() {
   let balances = {};
   CONFIG.WALLET_FIELDS.forEach(f => balances[f.id] = 0);
-
-  // 1. 수동 내역 가감
   state.wallet.forEach(w => {
     CONFIG.WALLET_FIELDS.forEach(f => {
-      if(w.items[f.id]) {
-        balances[f.id] += (w.type === 'add' ? w.items[f.id] : -w.items[f.id]);
-      }
+      if(w.items[f.id]) balances[f.id] += (w.type === 'add' ? w.items[f.id] : -w.items[f.id]);
     });
   });
-
-  // 2. 관극 기록에 의한 자동 차감
   state.records.forEach(r => {
     const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
-    if(discDef && discDef.useWallet) {
-      balances[discDef.useWallet] -= 1;
-    }
+    if(discDef && discDef.useWallet) balances[discDef.useWallet] -= 1;
   });
-
   return balances;
 }
 
 function renderCoupons() {
   const bals = calculateWalletBalance();
-  
-  // 지갑 현황 카드
   document.getElementById('wallet-cards').innerHTML = CONFIG.WALLET_FIELDS.map(f => `
     <div class="wcard">
       <div style="font-size:10px; color:var(--txt3); margin-bottom:4px;">${f.label}</div>
@@ -641,7 +665,6 @@ function renderCoupons() {
     </div>
   `).join('');
 
-  // 지갑 상세 히스토리
   const histTbody = document.getElementById('wallet-history-body');
   if(state.wallet.length === 0) {
     histTbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
@@ -663,7 +686,6 @@ function renderCoupons() {
       </tr>`;
     }).join('');
   }
-
   renderBoardStatus();
 }
 
@@ -694,24 +716,18 @@ function saveWallet() {
     const val = parseInt(document.getElementById(`wm-val-${f.id}`).value) || 0;
     if(val > 0) { items[f.id] = val; hasValue = true; }
   });
-
   if(!hasValue) { alert("수량을 1개 이상 입력하세요."); return; }
 
   const entry = {
-    id: id,
-    date: document.getElementById('wm-date').value,
+    id: id, date: document.getElementById('wm-date').value,
     type: document.getElementById('wm-type').value,
-    memo: document.getElementById('wm-memo').value,
-    items: items
+    memo: document.getElementById('wm-memo').value, items: items
   };
 
   const idx = state.wallet.findIndex(w => w.id === id);
-  if(idx >= 0) state.wallet[idx] = entry;
-  else state.wallet.push(entry);
+  if(idx >= 0) state.wallet[idx] = entry; else state.wallet.push(entry);
 
-  saveState();
-  closeModal('modal-wallet');
-  renderCoupons();
+  saveState(); closeModal('modal-wallet'); renderCoupons();
 }
 
 function editWallet(id) {
@@ -722,37 +738,28 @@ function editWallet(id) {
   document.getElementById('wm-date').value = w.date;
   document.getElementById('wm-type').value = w.type;
   document.getElementById('wm-memo').value = w.memo;
-  CONFIG.WALLET_FIELDS.forEach(f => {
-    document.getElementById(`wm-val-${f.id}`).value = w.items[f.id] || 0;
-  });
+  CONFIG.WALLET_FIELDS.forEach(f => { document.getElementById(`wm-val-${f.id}`).value = w.items[f.id] || 0; });
   openModal('modal-wallet');
 }
 
 function deleteWallet(id) {
   if(confirm("기록을 삭제하시겠습니까?")) {
     state.wallet = state.wallet.filter(w => w.id !== id);
-    saveState();
-    renderCoupons();
+    saveState(); renderCoupons();
   }
 }
 
 function renderBoardStatus() {
-  // 각 도장판별 누적 도장 수 계산
   let boardCounts = {};
   state.boards.forEach(b => boardCounts[b.id] = 0);
-  
   state.records.forEach(r => {
-    if(r.boards) {
-      Object.keys(r.boards).forEach(bid => {
-        if(boardCounts[bid] !== undefined) boardCounts[bid] += r.boards[bid];
-      });
-    }
+    if(r.boards) { Object.keys(r.boards).forEach(bid => { if(boardCounts[bid] !== undefined) boardCounts[bid] += r.boards[bid]; }); }
   });
 
   document.getElementById('board-status-container').innerHTML = state.boards.map(b => {
     const cnt = boardCounts[b.id];
     const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cnt);
-    const pct = Math.min(100, Math.round(cnt/7*100)); // 7개 만기 기준
+    const pct = Math.min(100, Math.round(cnt/7*100));
     
     return `<div style="background:var(--bg3); border:1px solid var(--brd2); padding:12px; border-radius:8px; margin-bottom:8px;">
       <div class="flex-between" style="margin-bottom:8px;">
@@ -774,18 +781,14 @@ function addBoard() {
   if(name === null) return;
   const newName = name.trim() || String(state.boards.length + 1);
   state.boards.push({ id: "b" + Date.now(), name: newName, initial: 0, active: true });
-  saveState();
-  renderCoupons();
-  renderRecords(); // 테이블 헤더 변경
+  saveState(); renderCoupons(); renderRecords();
 }
 
 // ============================================================
-// 7. TAB 4: STATS (정산 - 배우, 히트맵)
+// 7. TAB 4: STATS (정산 - 0열부터 시작하는 히트맵)
 // ============================================================
 function renderStats() {
-  // 1. 배우별 관람 횟수
   let actorStatsHtml = `<tr><th style="text-align:left; color:var(--txt3);">배우</th><th style="color:var(--txt3);">배역</th><th style="color:var(--txt3);">관람</th></tr>`;
-  
   CONFIG.ROLES.forEach((role, idx) => {
     const castKey = `cast${idx+1}`;
     role.actors.forEach(actor => {
@@ -799,10 +802,10 @@ function renderStats() {
   });
   document.getElementById('stats-actors').innerHTML = actorStatsHtml;
 
-  // 2. 좌석 히트맵
+  // 히트맵 데이터 매핑
   let seatMap = {};
   state.records.forEach(r => {
-    if(r.seatZone && r.seatRow && r.seatNum) {
+    if(r.seatZone && r.seatRow !== "" && r.seatNum !== "") {
       const k = `${r.seatZone}-${r.seatRow}-${r.seatNum}`;
       seatMap[k] = (seatMap[k] || 0) + 1;
     }
@@ -817,23 +820,44 @@ function renderStats() {
     return '';
   };
 
-  const zones = ['A', 'B', 'C'];
+  // A구역: 2~13행 4열 / B구역: 0~13행(0행=12열, 1~13행=13열) / C구역: 2~13행 4열
+  const zones = [
+    { name:'A', s:2, e:13, cols:()=>4 },
+    { name:'B', s:0, e:13, cols:(r)=>r===0?12:13 },
+    { name:'C', s:2, e:13, cols:()=>4 }
+  ];
+
+  let zHtml = { A:'', B:'', C:'' };
+  
+  // 0열부터 13열까지 루프
+  for (let row = 0; row <= 13; row++) {
+    zones.forEach(z => {
+      if (row < z.s || row > z.e) {
+        // A/C 구역의 0~1열은 비워둬서 B구역과 높이를 맞춤
+        zHtml[z.name] += `<div class="seat-row"><div class="row-label"></div>`;
+        const emptyCnt = z.name === 'B' ? (row === 0 ? 12 : 13) : 4;
+        for (let i = 0; i < emptyCnt; i++) {
+          zHtml[z.name] += `<div class="seat-cell" style="visibility:hidden;"></div>`;
+        }
+        zHtml[z.name] += `</div>`;
+      } else {
+        const colCnt = z.cols(row);
+        const rowStyle = (z.name === 'B' && row === 0) ? ' style="margin-left:14px;"' : '';
+        zHtml[z.name] += `<div class="seat-row"${rowStyle}><div class="row-label">${row}열</div>`;
+        for (let col = 1; col <= colCnt; col++) {
+          const k = `${z.name}-${row}-${col}`;
+          const cnt = seatMap[k] || 0;
+          zHtml[z.name] += `<div class="seat-cell ${getHeatClass(cnt)}" title="${z.name}구역 ${row}열 ${col}번: ${cnt}회"></div>`;
+        }
+        zHtml[z.name] += `</div>`;
+      }
+    });
+  }
+
   let hmHtml = '';
   zones.forEach(z => {
-    let zHtml = `<div class="zone-col"><div style="font-size:10px; font-weight:700; color:var(--txt3); margin-bottom:4px;">${z}구역</div>`;
-    for(let r=1; r<=13; r++) {
-      zHtml += `<div class="seat-row"><div style="font-size:8px; width:16px; text-align:right; color:var(--txt4); margin-right:2px;">${r}열</div>`;
-      const cols = z === 'B' ? 13 : 4; // 임의 좌석 배열 수
-      for(let c=1; c<=cols; c++) {
-        const k = `${z}-${r}-${c}`;
-        const cnt = seatMap[k] || 0;
-        zHtml += `<div class="seat-cell ${getHeatClass(cnt)}" title="${z}구역 ${r}열 ${c}번: ${cnt}회"></div>`;
-      }
-      zHtml += `</div>`;
-    }
-    hmHtml += zHtml + `</div>`;
+    hmHtml += `<div class="zone-col"><div style="font-size:10px; font-weight:700; color:var(--txt3); margin-bottom:4px;">${z.name}구역</div>${zHtml[z.name]}</div>`;
   });
-
   document.getElementById('heatmap-container').innerHTML = hmHtml;
 }
 
@@ -859,9 +883,7 @@ function importData(e) {
       const data = JSON.parse(ev.target.result);
       if(data.records && data.boards) {
         if(confirm("현재 데이터를 덮어쓰시겠습니까?")) {
-          state = data;
-          saveState();
-          location.reload();
+          state = data; saveState(); location.reload();
         }
       } else { alert("올바른 백업 파일이 아닙니다."); }
     } catch(err) { alert("파일 읽기 오류"); }
@@ -877,7 +899,7 @@ window.onload = () => {
   initRecordForm();
   initWalletForm();
   loadState();
-  switchTab('record', document.querySelector('.tab-btn')); // Start on Tab 1
+  switchTab('record', document.querySelector('.tab-btn')); 
 };
 </script>
 
