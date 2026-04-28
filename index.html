@@ -475,7 +475,7 @@ let state = {
 };
 
 let calFilters = { cast1: [], cast2: [] }; 
-let hideExchange = false; // 교환/나눔 숨기기 필터 상태
+let hideExchange = false;
 
 function loadState() {
   const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
@@ -524,7 +524,6 @@ function toggleExchangeFilter() {
   renderRecords();
 }
 
-// 명칭 간소화 헬퍼 함수
 function formatDiscount(val) {
   if (val === '증빙' || val === '증빙 프리패스') return '프패';
   if (val === '교환' || val === '교환/나눔') return '교환 / 나눔';
@@ -547,7 +546,6 @@ function renderRecords() {
 
   let sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   
-  // 실관람만 필터 적용
   if (hideExchange) {
     sorted = sorted.filter(r => r.discount !== '교환' && r.discount !== '교환/나눔');
   }
@@ -572,15 +570,18 @@ function renderRecords() {
 
   let tbHtml = sorted.map(r => {
     const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
+    
+    // 표에서는 B5-11 형식으로 간소화
     let seatStr = '-';
-    if (r.seatZone) {
-      seatStr = `${r.seatZone}구역`;
-      if (r.seatRow != null && r.seatRow !== "") seatStr += ` ${r.seatRow}열`;
-      if (r.seatNum != null && r.seatNum !== "") seatStr += ` ${r.seatNum}번`;
+    if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") {
+      seatStr = `${r.seatZone}${r.seatRow}-${r.seatNum}`;
+    } else if (r.seatZone && r.seatRow !== "") {
+      seatStr = `${r.seatZone}${r.seatRow}`;
+    } else if (r.seatZone) {
+      seatStr = r.seatZone;
     }
 
     const dispDisc = formatDiscount(r.discount);
-    // 교환/나눔인 경우 스타일 반투명 처리
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
     const rowStyle = isExchange ? 'opacity: 0.4;' : '';
 
@@ -765,7 +766,6 @@ function editRecord(id) {
   document.getElementById('rm-cast1').value = r.cast1 || '';
   document.getElementById('rm-cast2').value = r.cast2 || '';
   
-  // 예전 데이터가 교환으로 되어 있으면 신규 코드로 맞춰줌
   document.getElementById('rm-disc').value = r.discount === '교환' ? '교환/나눔' : (r.discount || '');
   
   document.getElementById('rm-zone').value = r.seatZone || "";
@@ -860,7 +860,6 @@ function renderMiniMap(selZone, selRow, selNum) {
   hmHtml += '</div>';
   return hmHtml;
 }
-
 
 // ============================================================
 // 5. TAB 2: CALENDAR 
@@ -1019,15 +1018,23 @@ function renderCalendar() {
 function calculateWalletBalance() {
   let balances = {};
   CONFIG.WALLET_FIELDS.forEach(f => balances[f.id] = 0);
+  
   state.wallet.forEach(w => {
     CONFIG.WALLET_FIELDS.forEach(f => {
       if(w.items[f.id]) balances[f.id] += (w.type === 'add' ? w.items[f.id] : -w.items[f.id]);
     });
   });
+  
   state.records.forEach(r => {
+    // 실관람표이면 재관람 할인표 1개 자동 획득 처리
+    if (r.discount !== '교환' && r.discount !== '교환/나눔') {
+      balances['re'] += 1;
+    }
+    // 할인권 사용 시 자동 차감
     const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
     if(discDef && discDef.useWallet) balances[discDef.useWallet] -= 1;
   });
+  
   return balances;
 }
 
@@ -1053,33 +1060,48 @@ function renderCoupons() {
   state.wallet.forEach(w => combinedWallet.push({...w, isAuto: false}));
   
   state.records.forEach(r => {
+    if (r.discount === '교환' || r.discount === '교환/나눔') return;
+
+    const dateParts = r.date.split('-');
+    const m = parseInt(dateParts[1], 10);
+    const d = parseInt(dateParts[2], 10);
+    
+    // 관람에 따른 '재관람표' 자동 획득 내역
+    combinedWallet.push({
+      id: 'auto_add_' + r.id,
+      date: r.date,
+      time: r.time,
+      type: 'add',
+      items: { re: 1 },
+      memo: `${m}/${d} ${r.time} 관극 획득`, 
+      isAuto: true,
+      order: 0 // 획득이 먼저 오도록
+    });
+
+    // 사용에 따른 차감 내역
     const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
     if (discDef && discDef.useWallet) {
       let items = {};
       items[discDef.useWallet] = 1;
-      
-      const dateParts = r.date.split('-');
-      const m = parseInt(dateParts[1], 10);
-      const d = parseInt(dateParts[2], 10);
-      
       combinedWallet.push({
-        id: 'auto_' + r.id,
+        id: 'auto_sub_' + r.id,
         date: r.date,
         time: r.time,
         type: 'sub',
         items: items,
-        memo: `${m}/${d} ${r.time} 관극`, 
+        memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, 
         isAuto: true,
-        order: 0 
+        order: 1 // 사용이 뒤에 오도록
       });
     }
   });
 
+  // 오래된 순서대로 정렬 (과거 -> 현재)
   combinedWallet.sort((a,b) => {
-    if (a.date !== b.date) return b.date.localeCompare(a.date); 
-    const orderDiff = (b.order || 0) - (a.order || 0);
+    if (a.date !== b.date) return a.date.localeCompare(b.date); // 오름차순 정렬
+    const orderDiff = (a.order || 0) - (b.order || 0);
     if (orderDiff !== 0) return orderDiff;
-    return (b.time || "").localeCompare(a.time || "");
+    return (a.time || "").localeCompare(b.time || ""); // 낮 -> 밤
   });
 
   const histTbody = document.getElementById('wallet-history-body');
@@ -1093,7 +1115,8 @@ function renderCoupons() {
       const dateDisp = `${parseInt(ds[1])}.${parseInt(ds[2])}(${getDow(w.date)})`;
       
       const isAdd = w.type === 'add';
-      const typeHtml = isAdd ? `<span style="color:var(--grn2); font-weight:700;">획득</span>` : `<span style="color:var(--grn2); font-weight:700;">사용</span>`;
+      // 유형 텍스트 노란색에서 흰색(--txt)으로 변경
+      const typeHtml = isAdd ? `<span style="color:var(--txt); font-weight:700;">획득</span>` : `<span style="color:var(--txt); font-weight:700;">사용</span>`;
       
       let colHtml = '';
       CONFIG.WALLET_FIELDS.forEach(f => {
@@ -1108,8 +1131,8 @@ function renderCoupons() {
       let ctrlHtml = '';
       if (!w.isAuto) {
         ctrlHtml = `
-          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', 1)">▲</button>
-          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', -1)">▼</button>
+          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', 1)">▼</button>
+          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', -1)">▲</button>
           <button class="btn sm" onclick="editWallet('${w.id}')" style="padding:2px 4px; margin-left:6px;">✎</button>
           <button class="btn sm" onclick="deleteWallet('${w.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
         `;
@@ -1210,14 +1233,13 @@ function renderBoardStatus() {
     if(r.boards) { Object.keys(r.boards).forEach(bid => { if(boardCounts[bid] !== undefined) boardCounts[bid] += r.boards[bid]; }); }
   });
 
-  const maxMilestone = Math.max(...CONFIG.STAMP_MILESTONES); // 기준 최대치 (7)
+  const maxMilestone = Math.max(...CONFIG.STAMP_MILESTONES);
 
   document.getElementById('board-status-container').innerHTML = state.boards.map(b => {
     const cnt = boardCounts[b.id];
     const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cnt);
     const pct = Math.min(100, (cnt / maxMilestone) * 100);
     
-    // 상세 내역 행 생성
     let histRows = state.records
       .filter(r => r.boards && r.boards[b.id])
       .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
@@ -1226,7 +1248,6 @@ function renderBoardStatus() {
     
     if(!histRows) histRows = `<tr><td colspan="3" style="padding:10px; color:var(--txt4);">적립 내역이 없습니다</td></tr>`;
 
-    // 마일스톤(보상 구간) 마커(세로 선) HTML
     let markersHtml = CONFIG.STAMP_MILESTONES.map(m => {
       let mPct = (m / maxMilestone) * 100;
       return `<div style="position:absolute; left:${mPct}%; top:-2px; bottom:-2px; width:2px; background:var(--txt2); z-index:2; border-radius:1px; opacity:0.8;"></div>`;
@@ -1268,33 +1289,28 @@ function addBoard() {
 // 7. STATS 
 // ============================================================
 function renderStats() {
-  // 실제 정산에 반영될 레코드 필터링 (교환/나눔 제외 및 중복 좌석 우선 처리)
   let validRecords = [];
   let grouped = {};
 
   state.records.forEach(r => {
-    // 1. 교환/나눔 표는 무조건 제외
     if (r.discount === '교환' || r.discount === '교환/나눔') return;
     
-    // 2. 날짜+시간으로 그룹화
     let k = r.date + '_' + r.time;
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(r);
   });
 
-  // 동일 날짜/시간에 기록이 여러 개일 경우, 좌석 정보가 있는 것 1개만 추출
   for (let k in grouped) {
     let grp = grouped[k];
     if (grp.length === 1) {
       validRecords.push(grp[0]);
     } else {
       let seated = grp.find(x => x.seatZone && x.seatRow !== "" && x.seatNum !== "");
-      if (!seated) seated = grp.find(x => x.seatZone); // 구역만이라도 적힌 것
-      validRecords.push(seated || grp[0]); // 정 없으면 첫 번째 것
+      if (!seated) seated = grp.find(x => x.seatZone);
+      validRecords.push(seated || grp[0]);
     }
   }
 
-  // 통계 테이블 생성
   let actorStatsHtml = `<tr>
     <th style="color:var(--txt3); width:30%;">배역</th>
     <th style="color:var(--txt3); width:40%;">배우</th>
@@ -1304,7 +1320,6 @@ function renderStats() {
   CONFIG.ROLES.forEach((role, idx) => {
     const castKey = `cast${idx+1}`;
     role.actors.forEach((actor, aIdx) => {
-      // validRecords(정제된 기록) 사용
       const cnt = validRecords.filter(r => r[castKey] === actor).length;
       actorStatsHtml += `<tr>`;
       if (aIdx === 0) actorStatsHtml += `<td rowspan="${role.actors.length}" style="font-weight:700; color:var(--txt2); vertical-align:middle; background:var(--bg3); border-right:1px solid var(--brd);">${role.label}</td>`;
@@ -1313,7 +1328,6 @@ function renderStats() {
   });
   document.getElementById('stats-actors').innerHTML = actorStatsHtml;
 
-  // 히트맵 처리
   let seatMap = {};
   validRecords.forEach(r => {
     if(r.seatZone && r.seatRow !== "" && r.seatNum !== "") {
