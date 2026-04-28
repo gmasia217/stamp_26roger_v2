@@ -265,8 +265,12 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
       </div>
     </div>
     <div class="fg">
-      <label class="flbl">도장 적립 (도장판 선택 / 체크시 1개 증가)</label>
+      <label class="flbl">도장 적립</label>
       <div id="rm-boards" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+      <div style="display:flex; gap:6px; margin-top:8px; align-items:center;">
+        <input type="text" id="rm-new-board-name" class="finput" style="flex:1; padding:6px 10px; min-height:34px; font-size:12px;" placeholder="새 도장판 이름 (비우면 자동)">
+        <button type="button" class="btn prim sm" style="white-space:nowrap; min-height:34px;" onclick="addBoardFromModal()">+ 추가</button>
+      </div>
     </div>
     <div class="fg">
       <label class="flbl">메모</label>
@@ -310,14 +314,24 @@ const CONFIG = {
     { id: "cast2", label: "디디", actors: ["정휘", "이한솔", "박주혁"] }
   ],
   
+  EVENTS: [
+    { name:'스페셜커튼콜', startDate:'2026-03-31', endDate:'2026-04-05', color:'#8B5CF6' },
+    { name:'트리플적립',   startDate:'2026-04-07', endDate:'2026-04-12', color:'#F59E0B' }
+  ],
+  
+  // 할인권 옵션 업데이트: wallet 연동은 특정 항목만 되도록 설정
   DISCOUNTS: [
     { label: "없음", value: "" },
     { label: "프리뷰", value: "프리뷰" },
-    { label: "재관할", value: "재관할", useWallet: "re" },
+    { label: "조예할", value: "조예할" },
+    { label: "마티네할", value: "마티네할" },
     { label: "창작산실할", value: "창작산실할", useWallet: "arko" },
+    { label: "재관할", value: "재관할", useWallet: "re" },
     { label: "40% 할인권", value: "40%", useWallet: "d40" },
     { label: "50% 할인권", value: "50%", useWallet: "d50" },
-    { label: "증빙 프리패스", value: "증빙", useWallet: "cert" }
+    { label: "증빙 프리패스", value: "증빙", useWallet: "cert" },
+    { label: "타임세일", value: "타임세일" },
+    { label: "교환", value: "교환" }
   ],
   
   WALLET_FIELDS: [
@@ -383,31 +397,44 @@ function toggleCollapsible(id) { document.getElementById(id).classList.toggle('o
 // 4. TAB 1: RECORD 
 // ============================================================
 function renderRecords() {
+  // 열 순서: 날짜 - 시간 - 캐스트 - 할인 - 좌석 - 도장판... - 관리
   let thHtml = `<tr>
     <th class="st-date">날짜</th>
     <th class="st-time">시간</th>
     <th class="st-cast">캐스트</th>
-    <th>할인</th>`;
+    <th>할인</th>
+    <th>좌석</th>`;
   state.boards.forEach(b => { thHtml += `<th style="color:var(--txt3); font-size:10px;">${b.name}</th>`; });
-  thHtml += `<th>좌석</th><th>관리</th></tr>`;
+  thHtml += `<th>관리</th></tr>`;
   document.getElementById('record-thead').innerHTML = thHtml;
 
   const sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   let tbHtml = sorted.map(r => {
     const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
-    const seatStr = r.seatZone && r.seatRow !== "" ? `${r.seatZone}-${r.seatRow}` : '-';
+    
+    // 좌석 표시 로직: 예) B구역 5열 11번 -> B5-11
+    let seatStr = '-';
+    if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") {
+      seatStr = `${r.seatZone}${r.seatRow}-${r.seatNum}`;
+    } else if (r.seatZone && r.seatRow !== "") {
+      seatStr = `${r.seatZone}${r.seatRow}`;
+    } else if (r.seatZone) {
+      seatStr = r.seatZone;
+    }
+
     let rowHtml = `<tr>
       <td class="st-date">${r.date.substring(5).replace('-','.')}</td>
       <td class="st-time">${r.time}</td>
       <td class="st-cast" style="font-weight:600; color:var(--red3);" title="${castStr}">${castStr}</td>
-      <td style="font-size:10px;">${r.discount || '-'}</td>`;
+      <td style="font-size:10px;">${r.discount || '-'}</td>
+      <td style="font-size:10px;">${seatStr}</td>`;
     
     state.boards.forEach(b => {
       const stamped = r.boards && r.boards[b.id] ? r.boards[b.id] : 0;
       rowHtml += `<td style="color:${stamped ? 'var(--red)' : 'var(--txt4)'}">${stamped || '-'}</td>`;
     });
 
-    rowHtml += `<td style="font-size:10px;">${seatStr}</td>
+    rowHtml += `
       <td>
         <button class="btn sm" onclick="editRecord('${r.id}')" style="padding:2px 4px;">✎</button>
         <button class="btn sm" onclick="deleteRecord('${r.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
@@ -476,6 +503,33 @@ function onTimeChange() {
   }
 }
 
+// 모달 내 도장판 체크박스 렌더링 (기존 체크 상태 유지)
+function renderBoardCheckboxesInModal() {
+  const checked = Array.from(document.querySelectorAll('.rm-board-chk:checked')).map(c => c.value);
+  document.getElementById('rm-boards').innerHTML = state.boards.map(b => 
+    `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+      <input type="checkbox" class="rm-board-chk" value="${b.id}" ${checked.includes(b.id) ? 'checked' : ''}> ${b.name}
+    </label>`
+  ).join('');
+}
+
+// 모달에서 도장판 즉시 추가
+function addBoardFromModal() {
+  const nameInput = document.getElementById('rm-new-board-name').value;
+  const newName = nameInput.trim() || String(state.boards.length + 1);
+  const newId = "b" + Date.now();
+  state.boards.push({ id: newId, name: newName, initial: 0, active: true });
+  saveState();
+  document.getElementById('rm-new-board-name').value = '';
+  renderBoardCheckboxesInModal();
+  
+  // 새로 추가된 도장판을 자동으로 체크
+  const newChk = document.querySelector(`.rm-board-chk[value="${newId}"]`);
+  if (newChk) newChk.checked = true;
+  
+  renderRecords(); // 뒤쪽 테이블 헤더 업데이트
+}
+
 function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-title').textContent = "회차 기록 추가";
   document.getElementById('rm-id').value = "";
@@ -489,11 +543,7 @@ function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-num').value = "";
   document.getElementById('rm-memo').value = "";
 
-  document.getElementById('rm-boards').innerHTML = state.boards.map(b => 
-    `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
-      <input type="checkbox" class="rm-board-chk" value="${b.id}"> ${b.name}
-    </label>`
-  ).join('');
+  renderBoardCheckboxesInModal(); // 체크박스 빈 상태로 초기 렌더링
 
   openModal('modal-record');
 }
@@ -548,6 +598,7 @@ function editRecord(id) {
   document.getElementById('rm-num').value = r.seatNum || "";
   document.getElementById('rm-memo').value = r.memo || "";
 
+  renderBoardCheckboxesInModal(); // 먼저 그리고 데이터 세팅
   document.querySelectorAll('.rm-board-chk').forEach(chk => {
     chk.checked = r.boards && r.boards[chk.value] > 0;
   });
@@ -835,7 +886,7 @@ function addBoard() {
 }
 
 // ============================================================
-// 7. TAB 4: STATS
+// 7. TAB 4: STATS 
 // ============================================================
 function renderStats() {
   let actorStatsHtml = `<tr><th style="text-align:left; color:var(--txt3);">배우</th><th style="color:var(--txt3);">배역</th><th style="color:var(--txt3);">관람</th></tr>`;
