@@ -125,7 +125,6 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
       <div class="page-title" id="app-title-display">관극 기록</div>
       <button class="btn prim sm" onclick="openRecordModal()">+ 추가</button>
     </div>
-    
     <div class="twrap">
       <table class="record-tb">
         <thead id="record-thead"></thead>
@@ -136,7 +135,6 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 
   <div class="page" id="page-calendar">
     <div class="page-title">스케줄 달력</div>
-    
     <div class="card" style="padding:12px;">
       <div style="font-size:11px; color:var(--txt3); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
         <span id="cal-filter-display">캐스트 필터: 전체</span>
@@ -153,14 +151,12 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 
   <div class="page" id="page-coupon">
     <div class="page-title">할인권 및 도장판</div>
-    
     <div class="card">
       <div class="flex-between" style="margin-bottom:12px;">
         <div class="card-title" style="margin:0;">지갑 현황</div>
         <button class="btn grn sm" onclick="openWalletModal()">+ 추가/차감</button>
       </div>
       <div class="wallet-grid" id="wallet-cards"></div>
-      
       <div class="card-title" style="cursor:pointer; color:var(--txt3);" onclick="toggleCollapsible('wallet-history')">
         ▶ 할인권 상세 기록 (접기/펴기)
       </div>
@@ -171,7 +167,6 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
         </table>
       </div>
     </div>
-
     <div class="card">
       <div class="flex-between" style="margin-bottom:12px;">
         <div class="card-title" style="margin:0;">도장판 현황</div>
@@ -183,12 +178,10 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 
   <div class="page" id="page-stats">
     <div class="page-title">정산 통계</div>
-    
     <div class="card">
       <div class="card-title">배우별 관람 횟수</div>
       <table class="record-tb" style="width:100%; border-left:1px solid var(--brd);" id="stats-actors"></table>
     </div>
-
     <div class="card">
       <div class="card-title">좌석 히트맵</div>
       <div class="heatmap-wrap" id="heatmap-container"></div>
@@ -222,7 +215,6 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
         <button class="btn sm" onclick="fetchEvents(true)">새로고침</button>
       </div>
     </div>
-
     <div class="card">
       <div class="card-title">백업 및 복원</div>
       <div style="display:flex; gap:10px;">
@@ -259,14 +251,11 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
         </select>
       </div>
     </div>
-
     <div style="display:flex; gap:10px;" id="rm-cast-container"></div>
-
     <div class="fg">
       <label class="flbl">할인 권종</label>
       <select id="rm-disc" class="fselect"></select>
     </div>
-
     <div class="fg">
       <label class="flbl">좌석 정보 (구역 / 열 / 번호)</label>
       <div style="display:flex; gap:10px;">
@@ -275,17 +264,14 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
         <input type="number" id="rm-num" class="finput" style="flex:1;" placeholder="번호" min="1">
       </div>
     </div>
-
     <div class="fg">
       <label class="flbl">도장 적립 (도장판 선택 / 체크시 1개 증가)</label>
       <div id="rm-boards" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
     </div>
-
     <div class="fg">
       <label class="flbl">메모</label>
       <input type="text" id="rm-memo" class="finput" placeholder="메모를 입력하세요">
     </div>
-
     <div style="display:flex; gap:10px; margin-top:20px;">
       <button class="btn" style="flex:1;" onclick="closeModal('modal-record')">취소</button>
       <button class="btn prim" style="flex:1;" onclick="saveRecord()">저장</button>
@@ -313,7 +299,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 
 <script>
 // ============================================================
-// 1. EXTENSIBILITY CONFIGURATION (확장성을 위한 통합 설정)
+// 1. EXTENSIBILITY CONFIGURATION 
 // ============================================================
 const CONFIG = {
   SHOW_NAME: "라져",
@@ -322,11 +308,6 @@ const CONFIG = {
   ROLES: [
     { id: "cast1", label: "스카일러", actors: ["주민진", "고상호", "기세중"] },
     { id: "cast2", label: "디디", actors: ["정휘", "이한솔", "박주혁"] }
-  ],
-  
-  EVENTS: [
-    { name:'스페셜커튼콜', startDate:'2026-03-31', endDate:'2026-04-05', color:'#8B5CF6' },
-    { name:'트리플적립',   startDate:'2026-04-07', endDate:'2026-04-12', color:'#F59E0B' }
   ],
   
   DISCOUNTS: [
@@ -363,9 +344,17 @@ let state = {
 
 function loadState() {
   const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
-  if(saved) state = JSON.parse(saved);
+  if(saved) {
+    const parsed = JSON.parse(saved);
+    state.records = parsed.records || [];
+    state.boards = parsed.boards || [{ id: "b1", name: "1", initial: 0, active: true }];
+    state.wallet = parsed.wallet || [];
+    state.schedule = parsed.schedule || [];
+    state.events = parsed.events || [];
+  }
   document.getElementById('app-title-display').textContent = `✈ ${CONFIG.SHOW_NAME} 기록`;
 }
+
 function saveState() {
   localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state));
 }
@@ -373,7 +362,7 @@ function uuid() { return Math.random().toString(36).substr(2, 9); }
 function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 // ============================================================
-// 3. UI NAVIGATION & UTILS
+// 3. UI NAVIGATION
 // ============================================================
 function switchTab(tabId, btnEl) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -391,7 +380,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 function toggleCollapsible(id) { document.getElementById(id).classList.toggle('open'); }
 
 // ============================================================
-// 4. TAB 1: RECORD (관극 기록) - Sticky & Full Cast
+// 4. TAB 1: RECORD 
 // ============================================================
 function renderRecords() {
   let thHtml = `<tr>
@@ -405,7 +394,6 @@ function renderRecords() {
 
   const sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   let tbHtml = sorted.map(r => {
-    // 3. 캐스트 이름 줄이지 않고 풀네임으로 합치기
     const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
     const seatStr = r.seatZone && r.seatRow !== "" ? `${r.seatZone}-${r.seatRow}` : '-';
     let rowHtml = `<tr>
@@ -444,7 +432,6 @@ function initRecordForm() {
   document.getElementById('rm-disc').innerHTML = CONFIG.DISCOUNTS.map(d => `<option value="${d.value}">${d.label}</option>`).join('');
 }
 
-// 스케줄 자동 연동 로직
 function autoFillCasting() {
   const date = document.getElementById('rm-date').value;
   const timeSelect = document.getElementById('rm-time');
@@ -546,8 +533,7 @@ function editRecord(id) {
   document.getElementById('rm-id').value = r.id;
   document.getElementById('rm-date').value = r.date;
   
-  autoFillCasting(); // 해당 날짜의 시간대 옵션 로드
-  
+  autoFillCasting();
   const timeSelect = document.getElementById('rm-time');
   if (!timeSelect.querySelector(`option[value="${r.time}"]`)) {
     timeSelect.innerHTML += `<option value="${r.time}">${r.time}</option>`;
@@ -575,7 +561,7 @@ function deleteRecord(id) {
 }
 
 // ============================================================
-// 5. TAB 2: CALENDAR (스케줄 연동 및 이벤트 배너 적용)
+// 5. TAB 2: CALENDAR 
 // ============================================================
 let curYear = new Date().getFullYear();
 let curMonth = new Date().getMonth(); 
@@ -610,7 +596,7 @@ function renderCalendar() {
   const monthStart = `${monthStr}-01`;
   const monthEnd = `${monthStr}-${String(daysInMonth).padStart(2,'0')}`;
 
-  const evts = state.events && state.events.length ? state.events : CONFIG.EVENTS;
+  const evts = state.events && state.events.length ? state.events : [];
   const segments = [];
   evts.forEach(ev => {
     if (ev.endDate < monthStart || ev.startDate > monthEnd) return;
@@ -657,7 +643,6 @@ function renderCalendar() {
       const isToday = dateStr === todayStr();
       const isSun = new Date(curYear, curMonth, day).getDay() === 0;
       
-      // 스케줄과 기록 병합 로직
       let dayItems = [];
       (state.schedule || []).filter(s => s.date === dateStr).forEach(s => {
         dayItems.push({ time: s.time, cast1: s.cast1 || s.skylar, cast2: s.cast2 || s.didi, isBooked: false });
@@ -850,7 +835,7 @@ function addBoard() {
 }
 
 // ============================================================
-// 7. TAB 4: STATS (정산 - 0열부터 시작하는 히트맵)
+// 7. TAB 4: STATS
 // ============================================================
 function renderStats() {
   let actorStatsHtml = `<tr><th style="text-align:left; color:var(--txt3);">배우</th><th style="color:var(--txt3);">배역</th><th style="color:var(--txt3);">관람</th></tr>`;
@@ -920,7 +905,7 @@ function renderStats() {
 }
 
 // ============================================================
-// 8. TAB 5: SETTINGS (스케줄 연동 기능 구현) & BACKUP
+// 8. TAB 5: SETTINGS & BACKUP
 // ============================================================
 async function fetchSchedule(manual = false) {
   const statusEl = document.getElementById('set-sch-time');
