@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>관극 기록</title>
+<title>라져 관극 기록</title>
 
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" type="image/jpeg" href="roger_icon.jpg">
@@ -84,7 +84,8 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .record-tb th, .record-tb td { padding:8px 6px; border-bottom:1px solid var(--brd); border-right:1px solid var(--brd); text-align:center; white-space:nowrap; font-size:12px; vertical-align:middle; }
 .record-tb thead th { border-top:1px solid var(--brd); background:var(--bg4); position:sticky; top:0; z-index:21; font-size:10px; color:var(--txt3); }
 
-.st-date { position:sticky; left:0; z-index:20; background:var(--bg2); border-left:1px solid var(--brd); min-width:55px; max-width:55px; }
+.st-date { position:sticky; left:0; z-index:20; background:var(--bg2); border-left:1px solid var(--brd); min-width:55px; max-width:55px; cursor:pointer; }
+.st-date:hover { background:var(--bg3); } /* 클릭 가능 표시 */
 .st-time { position:sticky; left:55px; z-index:20; background:var(--bg2); min-width:45px; max-width:45px; }
 .st-cast { position:sticky; left:100px; z-index:20; background:var(--bg2); min-width:85px; max-width:85px; border-right:2px solid var(--red) !important; overflow:hidden; text-overflow:ellipsis; }
 .record-tb thead .st-date, .record-tb thead .st-time, .record-tb thead .st-cast { background:var(--bg4); z-index:22; }
@@ -98,6 +99,16 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .overlay.show { display:flex; }
 .modal { background:var(--bg2); border-top:2px solid var(--red); width:100%; max-width:520px; max-height:90vh; overflow-y:auto; padding:20px; border-radius:16px 16px 0 0; animation:slideUp 0.3s ease; }
 @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+
+/* 중앙 정렬 팝업 (상세 정보용) */
+.overlay.center { align-items:center; padding:20px; }
+.modal.center { border-radius:16px; border:1px solid var(--brd2); animation:popIn 0.2s ease; margin:auto; width:100%; max-width:400px; }
+@keyframes popIn { from { transform:scale(0.95); opacity:0; } to { transform:scale(1); opacity:1; } }
+
+/* MINI SEAT MAP */
+.mini-seat-row { display:flex; gap:1px; margin-bottom:1px; justify-content:center; }
+.mini-seat-cell { width:8px; height:8px; background:rgba(255,255,255,0.1); border-radius:1px; flex-shrink:0; }
+.mini-seat-cell.highlight { background:var(--seat4); box-shadow:0 0 6px var(--seat4); }
 
 /* CALENDAR & EVENTS */
 .cal-filter-group { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
@@ -284,7 +295,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
   <button class="tab-btn" onclick="switchTab('settings', this)"><span class="icon">⚙️</span>설정</button>
 </nav>
 
-<div class="overlay" id="modal-record">
+<div class="overlay" id="modal-record" onclick="if(event.target===this) closeModal('modal-record')">
   <div class="modal">
     <div class="page-title" id="rm-title" style="font-size:18px;">회차 기록</div>
     <input type="hidden" id="rm-id">
@@ -343,7 +354,25 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
   </div>
 </div>
 
-<div class="overlay" id="modal-wallet">
+<div class="overlay center" id="modal-detail" onclick="if(event.target===this) closeModal('modal-detail')">
+  <div class="modal center">
+    <div class="flex-between detail-header">
+      <div class="detail-date-title" id="dt-title"></div>
+      <button class="btn sm ghost" onclick="closeModal('modal-detail')" style="font-size:16px; padding:0 6px;">✕</button>
+    </div>
+    <div class="detail-info-row"><span>CAST</span> <span id="dt-cast" style="color:var(--txt); font-weight:400;"></span></div>
+    <div class="detail-info-row"><span>SEAT</span> <span id="dt-seat" style="color:var(--txt); font-weight:400;"></span></div>
+    
+    <div id="dt-minimap" class="mini-hm-container"></div>
+    
+    <div style="display:flex; gap:10px;">
+      <button class="btn" style="flex:1;" id="dt-btn-edit">수정</button>
+      <button class="btn" style="flex:1; background:var(--red3); color:#000; font-weight:700; border-color:var(--red3);" id="dt-btn-delete">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-wallet" onclick="if(event.target===this) closeModal('modal-wallet')">
   <div class="modal">
     <div class="page-title" id="wm-title" style="font-size:18px;">할인권 내역</div>
     <input type="hidden" id="wm-id">
@@ -501,7 +530,7 @@ function renderRecords() {
     else if (r.seatZone) seatStr = r.seatZone;
 
     let rowHtml = `<tr>
-      <td class="st-date">${r.date.substring(5).replace('-','.')}</td>
+      <td class="st-date" onclick="openDetailModal('${r.id}')">${r.date.substring(5).replace('-','.')}</td>
       <td class="st-time">${r.time}</td>
       <td class="st-cast" style="font-weight:600; color:var(--red3);" title="${castStr}">${castStr}</td>
       <td style="font-size:10px;">${r.discount || '-'}</td>
@@ -709,6 +738,67 @@ function deleteRecord(id) {
   }
 }
 
+// 상세 정보 모달 로직
+function openDetailModal(id) {
+  const r = state.records.find(x => x.id === id);
+  if(!r) return;
+
+  const getDow = (dStr) => { const d = new Date(dStr); return ['일','월','화','수','목','금','토'][d.getDay()]; };
+  const dow = getDow(r.date);
+  
+  document.getElementById('dt-title').textContent = `${r.date} (${dow}) ${r.time}`;
+  document.getElementById('dt-cast').textContent = `${r.cast1||'-'}, ${r.cast2||'-'}`;
+  
+  let seatStr = '-';
+  if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") seatStr = `${r.seatZone}구역 ${r.seatRow}열 ${r.seatNum}번`;
+  else if (r.seatZone && r.seatRow !== "") seatStr = `${r.seatZone}구역 ${r.seatRow}열`;
+  else if (r.seatZone) seatStr = `${r.seatZone}구역`;
+  
+  document.getElementById('dt-seat').textContent = seatStr;
+
+  document.getElementById('dt-minimap').innerHTML = renderMiniMap(r.seatZone, parseInt(r.seatRow), parseInt(r.seatNum));
+
+  document.getElementById('dt-btn-edit').onclick = () => { closeModal('modal-detail'); editRecord(id); };
+  document.getElementById('dt-btn-delete').onclick = () => { closeModal('modal-detail'); deleteRecord(id); };
+
+  openModal('modal-detail');
+}
+
+function renderMiniMap(selZone, selRow, selNum) {
+  const zones = [
+    { name:'A', s:2, e:13, cols:()=>4 },
+    { name:'B', s:0, e:13, cols:(r)=>r===0?12:13 },
+    { name:'C', s:2, e:13, cols:()=>4 }
+  ];
+
+  let zHtml = { A:'', B:'', C:'' };
+  for (let row = 0; row <= 13; row++) {
+    zones.forEach(z => {
+      if (row < z.s || row > z.e) {
+        zHtml[z.name] += `<div class="mini-seat-row">`;
+        const emptyCnt = z.name === 'B' ? (row === 0 ? 12 : 13) : 4;
+        for (let i = 0; i < emptyCnt; i++) zHtml[z.name] += `<div class="mini-seat-cell" style="visibility:hidden;"></div>`;
+        zHtml[z.name] += `</div>`;
+      } else {
+        const colCnt = z.cols(row);
+        const rowStyle = (z.name === 'B' && row === 0) ? ' style="margin-left:10px;"' : '';
+        zHtml[z.name] += `<div class="mini-seat-row"${rowStyle}>`;
+        for (let col = 1; col <= colCnt; col++) {
+          const isSel = (z.name === selZone && row === selRow && col === selNum);
+          zHtml[z.name] += `<div class="mini-seat-cell ${isSel ? 'highlight' : ''}"></div>`;
+        }
+        zHtml[z.name] += `</div>`;
+      }
+    });
+  }
+
+  let hmHtml = '';
+  zones.forEach(z => {
+    hmHtml += `<div class="mini-zone-col"><div style="font-size:10px; color:var(--txt3); margin-bottom:2px;">${z.name}</div>${zHtml[z.name]}</div>`;
+  });
+  return hmHtml;
+}
+
 // ============================================================
 // 5. TAB 2: CALENDAR 
 // ============================================================
@@ -826,7 +916,7 @@ function renderCalendar() {
 
       dayItems.sort((a,b) => a.time.localeCompare(b.time));
 
-      // 들여쓰기 뺀 풀네임 표시 
+      // 줄바꿈 + 풀네임
       let chipsHtml = dayItems.map(i => {
         const cls = i.isBooked ? 'booked' : '';
         return `<div class="cs-chip ${cls}">
@@ -918,14 +1008,13 @@ function renderCoupons() {
         time: r.time,
         type: 'sub',
         items: items,
-        memo: `${m}/${d} ${r.time} 관극`, // 변경된 연동 메모
+        memo: `${m}/${d} ${r.time} 관극`, 
         isAuto: true,
         order: 0 
       });
     }
   });
 
-  // 정렬: 날짜 최신순 -> 사용자 order -> 관극 시간
   combinedWallet.sort((a,b) => {
     if (a.date !== b.date) return b.date.localeCompare(a.date); 
     const orderDiff = (b.order || 0) - (a.order || 0);
@@ -946,7 +1035,6 @@ function renderCoupons() {
       const isAdd = w.type === 'add';
       const typeHtml = isAdd ? `<span style="color:var(--grn2); font-weight:700;">획득</span>` : `<span style="color:var(--grn2); font-weight:700;">사용</span>`;
       
-      // 컬럼 분리
       let colHtml = '';
       CONFIG.WALLET_FIELDS.forEach(f => {
         let valStr = '';
