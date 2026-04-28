@@ -57,6 +57,7 @@ body { background:var(--bg); color:var(--txt); font-family:'Pretendard', sans-se
 .btn.prim { background:var(--red); border-color:var(--red); color:#000; font-weight:700; }
 .btn.prim:active { background:var(--red2); border-color:var(--red2); }
 .btn.sm { padding:4px 10px; font-size:11px; }
+.btn.ghost { background:transparent; border-color:transparent; color:var(--txt4); }
 .btn.grn { background:var(--grn); border-color:var(--grn); color:#000; font-weight:700; }
 .flex-between { display:flex; justify-content:space-between; align-items:center; }
 
@@ -83,16 +84,30 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
 
 /* CALENDAR & EVENTS */
+.cal-filter-group { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.cal-filter-label { font-size:12px; color:var(--txt3); width:50px; font-weight:600; }
+.cal-filter-btn { background:var(--bg3); border:1px solid var(--brd2); color:var(--txt4); padding:4px 10px; border-radius:4px; font-size:12px; cursor:pointer; transition:all 0.2s; }
+.cal-filter-btn.active { background:var(--bg4); border-color:var(--txt2); color:var(--txt); font-weight:600; }
+
 .cal-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-.cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; position:relative; }
-.cal-dow { text-align:center; font-size:10px; color:var(--txt3); padding:4px 0; }
-.cal-day { min-height:54px; background:var(--bg3); border-radius:4px; padding:4px 3px 3px; cursor:pointer; position:relative; overflow:hidden; border:1px solid transparent; display:flex; flex-direction:column; align-items:flex-start; transition:background 0.15s; }
-.cal-day.today { border-color:var(--grn); background:rgba(255,204,0,.1); }
-.cal-day.sun { color:var(--red3); }
-.cal-day.empty { background:transparent; border-color:transparent; cursor:default; }
-.cal-day-num { font-size:11px; font-weight:700; width:100%; text-align:center; display:block; line-height:1.3; }
-.cs-chip { font-size:9px; background:var(--bg4); color:var(--txt2); padding:2px 3px; margin-top:2px; border-radius:2px; width:100%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cs-chip.booked { background:rgba(0,229,255,0.15); color:var(--red); border:1px solid var(--red); font-weight:600; }
+.cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:1px; position:relative; background:var(--brd); border:1px solid var(--brd); border-radius:4px; overflow:hidden;}
+.cal-dow { text-align:center; font-size:11px; font-weight:700; color:var(--txt3); padding:8px 0; background:var(--bg2); }
+.cal-day { min-height:100px; background:var(--bg); padding:6px 4px; cursor:pointer; position:relative; display:flex; flex-direction:column; align-items:flex-start; transition:background 0.15s; }
+.cal-day.today { background:rgba(255,204,0,.05); border:1px solid var(--grn); }
+.cal-day.empty { background:var(--bg2); cursor:default; }
+
+/* 날짜 왼쪽 정렬 및 색상 */
+.cal-day-num { font-size:12px; font-weight:700; color:var(--txt3); margin-bottom:4px; padding-left:2px; }
+.cal-day.sun .cal-day-num { color:#ff6b6b; }
+.cal-day.sat .cal-day-num { color:#5c8aff; }
+
+/* 회차 블록 (줄바꿈 표시) */
+.cs-chip { width:100%; text-align:left; padding:4px; border-radius:4px; margin-top:4px; background:transparent; border:1px solid transparent; }
+.cs-time { font-size:11px; font-weight:700; color:var(--txt); }
+.cs-time::before { content: '• '; }
+.cs-cast { font-size:10px; color:var(--txt3); margin-top:2px; padding-left:8px; word-break:keep-all; }
+.cs-chip.booked { background:rgba(0, 229, 255, 0.1); border-color:var(--red); }
+.cs-chip.booked .cs-time, .cs-chip.booked .cs-cast { color:var(--red); }
 
 /* WALLET & STAMPS */
 .wallet-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:16px; }
@@ -135,15 +150,20 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 
   <div class="page" id="page-calendar">
     <div class="page-title">스케줄 달력</div>
-    <div class="card" style="padding:12px;">
-      <div style="font-size:11px; color:var(--txt3); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-        <span id="cal-filter-display">캐스트 필터: 전체</span>
-        <button class="btn sm" style="padding:2px 6px;" onclick="changeCastFilter()">필터 변경</button>
+    
+    <div class="card" style="padding:16px 12px;">
+      <div id="cal-filter-wrap"></div>
+      <div style="margin-top:12px;">
+        <button class="btn sm" style="margin-right:4px;" onclick="applyCalFilter()">조회하기</button>
+        <button class="btn sm ghost" onclick="resetCalFilter()">초기화</button>
       </div>
+    </div>
+
+    <div class="card" style="padding:12px;">
       <div class="cal-nav">
-        <button class="btn sm" onclick="changeMonth(-1)">‹</button>
-        <div id="cal-month-title" style="font-weight:700; font-size:16px;"></div>
-        <button class="btn sm" onclick="changeMonth(1)">›</button>
+        <button class="btn sm" onclick="changeMonth(-1)">‹ 이전달</button>
+        <div id="cal-month-title" style="font-weight:700; font-size:18px;"></div>
+        <button class="btn sm" onclick="changeMonth(1)">다음달 ›</button>
       </div>
       <div id="cal-grid-container"></div>
     </div>
@@ -319,7 +339,6 @@ const CONFIG = {
     { name:'트리플적립',   startDate:'2026-04-07', endDate:'2026-04-12', color:'#F59E0B' }
   ],
   
-  // 할인권 옵션 업데이트: wallet 연동은 특정 항목만 되도록 설정
   DISCOUNTS: [
     { label: "없음", value: "" },
     { label: "프리뷰", value: "프리뷰" },
@@ -356,6 +375,9 @@ let state = {
   events: []
 };
 
+// 캘린더 필터 상태 관리 객체
+let calFilters = { cast1: [], cast2: [] }; 
+
 function loadState() {
   const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
   if(saved) {
@@ -385,7 +407,7 @@ function switchTab(tabId, btnEl) {
   btnEl.classList.add('active');
   
   if(tabId === 'record') renderRecords();
-  if(tabId === 'calendar') renderCalendar();
+  if(tabId === 'calendar') { renderCalFilters(); renderCalendar(); }
   if(tabId === 'coupon') renderCoupons();
   if(tabId === 'stats') renderStats();
 }
@@ -397,7 +419,6 @@ function toggleCollapsible(id) { document.getElementById(id).classList.toggle('o
 // 4. TAB 1: RECORD 
 // ============================================================
 function renderRecords() {
-  // 열 순서: 날짜 - 시간 - 캐스트 - 할인 - 좌석 - 도장판... - 관리
   let thHtml = `<tr>
     <th class="st-date">날짜</th>
     <th class="st-time">시간</th>
@@ -412,15 +433,10 @@ function renderRecords() {
   let tbHtml = sorted.map(r => {
     const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
     
-    // 좌석 표시 로직: 예) B구역 5열 11번 -> B5-11
     let seatStr = '-';
-    if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") {
-      seatStr = `${r.seatZone}${r.seatRow}-${r.seatNum}`;
-    } else if (r.seatZone && r.seatRow !== "") {
-      seatStr = `${r.seatZone}${r.seatRow}`;
-    } else if (r.seatZone) {
-      seatStr = r.seatZone;
-    }
+    if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") seatStr = `${r.seatZone}${r.seatRow}-${r.seatNum}`;
+    else if (r.seatZone && r.seatRow !== "") seatStr = `${r.seatZone}${r.seatRow}`;
+    else if (r.seatZone) seatStr = r.seatZone;
 
     let rowHtml = `<tr>
       <td class="st-date">${r.date.substring(5).replace('-','.')}</td>
@@ -503,7 +519,6 @@ function onTimeChange() {
   }
 }
 
-// 모달 내 도장판 체크박스 렌더링 (기존 체크 상태 유지)
 function renderBoardCheckboxesInModal() {
   const checked = Array.from(document.querySelectorAll('.rm-board-chk:checked')).map(c => c.value);
   document.getElementById('rm-boards').innerHTML = state.boards.map(b => 
@@ -513,7 +528,6 @@ function renderBoardCheckboxesInModal() {
   ).join('');
 }
 
-// 모달에서 도장판 즉시 추가
 function addBoardFromModal() {
   const nameInput = document.getElementById('rm-new-board-name').value;
   const newName = nameInput.trim() || String(state.boards.length + 1);
@@ -523,11 +537,9 @@ function addBoardFromModal() {
   document.getElementById('rm-new-board-name').value = '';
   renderBoardCheckboxesInModal();
   
-  // 새로 추가된 도장판을 자동으로 체크
   const newChk = document.querySelector(`.rm-board-chk[value="${newId}"]`);
   if (newChk) newChk.checked = true;
-  
-  renderRecords(); // 뒤쪽 테이블 헤더 업데이트
+  renderRecords(); 
 }
 
 function openRecordModal(date = '', isEdit = false) {
@@ -543,8 +555,7 @@ function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-num').value = "";
   document.getElementById('rm-memo').value = "";
 
-  renderBoardCheckboxesInModal(); // 체크박스 빈 상태로 초기 렌더링
-
+  renderBoardCheckboxesInModal(); 
   openModal('modal-record');
 }
 
@@ -598,7 +609,7 @@ function editRecord(id) {
   document.getElementById('rm-num').value = r.seatNum || "";
   document.getElementById('rm-memo').value = r.memo || "";
 
-  renderBoardCheckboxesInModal(); // 먼저 그리고 데이터 세팅
+  renderBoardCheckboxesInModal(); 
   document.querySelectorAll('.rm-board-chk').forEach(chk => {
     chk.checked = r.boards && r.boards[chk.value] > 0;
   });
@@ -612,11 +623,10 @@ function deleteRecord(id) {
 }
 
 // ============================================================
-// 5. TAB 2: CALENDAR 
+// 5. TAB 2: CALENDAR (사진 기반 필터 & 렌더링)
 // ============================================================
 let curYear = new Date().getFullYear();
 let curMonth = new Date().getMonth(); 
-let calFilter = null; 
 
 function changeMonth(diff) {
   curMonth += diff;
@@ -625,19 +635,42 @@ function changeMonth(diff) {
   renderCalendar();
 }
 
-function changeCastFilter() {
-  const actors = [...CONFIG.ROLES[0].actors, ...CONFIG.ROLES[1].actors];
-  if(!calFilter) calFilter = actors[0];
-  else {
-    const idx = actors.indexOf(calFilter);
-    calFilter = idx < actors.length - 1 ? actors[idx+1] : null;
-  }
-  document.getElementById('cal-filter-display').textContent = `캐스트 필터: ${calFilter ? calFilter : '전체'}`;
+// 필터 UI 렌더링
+function renderCalFilters() {
+  let html = '';
+  CONFIG.ROLES.forEach((role, idx) => {
+    const roleKey = `cast${idx+1}`;
+    html += `<div class="cal-filter-group">
+      <div class="cal-filter-label">${role.label}</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">`;
+    role.actors.forEach(actor => {
+      const isActive = calFilters[roleKey].includes(actor);
+      html += `<button class="cal-filter-btn ${isActive ? 'active' : ''}" onclick="toggleCalFilter('${roleKey}', '${actor}')">${actor}</button>`;
+    });
+    html += `</div></div>`;
+  });
+  document.getElementById('cal-filter-wrap').innerHTML = html;
+}
+
+function toggleCalFilter(roleKey, actor) {
+  const idx = calFilters[roleKey].indexOf(actor);
+  if (idx > -1) calFilters[roleKey].splice(idx, 1);
+  else calFilters[roleKey].push(actor);
+  renderCalFilters(); // 버튼 색깔 업데이트
+}
+
+function applyCalFilter() {
+  renderCalendar();
+}
+
+function resetCalFilter() {
+  calFilters = { cast1: [], cast2: [] };
+  renderCalFilters();
   renderCalendar();
 }
 
 function renderCalendar() {
-  document.getElementById('cal-month-title').textContent = `${curYear}.${String(curMonth+1).padStart(2,'0')}`;
+  document.getElementById('cal-month-title').textContent = `${curYear}년 ${curMonth+1}월`;
   
   const firstDay = new Date(curYear, curMonth, 1).getDay();
   const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
@@ -680,7 +713,7 @@ function renderCalendar() {
     const maxRow = wSegs.length ? Math.max(...wSegs.map(s => s.row)) + 1 : 0;
     const evHeight = maxRow * 16; 
 
-    html += `<div class="cal-grid" style="margin-bottom:2px;">`;
+    html += `<div class="cal-grid" style="margin-top:-1px;">`;
     for(let col=0; col<7; col++) {
       const cell = w * 7 + col;
       const day = cell - firstDay + 1;
@@ -693,6 +726,7 @@ function renderCalendar() {
       const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`;
       const isToday = dateStr === todayStr();
       const isSun = new Date(curYear, curMonth, day).getDay() === 0;
+      const isSat = new Date(curYear, curMonth, day).getDay() === 6;
       
       let dayItems = [];
       (state.schedule || []).filter(s => s.date === dateStr).forEach(s => {
@@ -704,30 +738,40 @@ function renderCalendar() {
         else { dayItems.push({ time: r.time, cast1: r.cast1, cast2: r.cast2, isBooked: true }); }
       });
 
-      dayItems = dayItems.filter(i => !calFilter || i.cast1 === calFilter || i.cast2 === calFilter);
+      // 캐스트 필터 적용 (선택된 캐스트가 비어있으면 통과, 있으면 포함되어야 통과)
+      dayItems = dayItems.filter(i => {
+        const c1Match = calFilters.cast1.length === 0 || calFilters.cast1.includes(i.cast1);
+        const c2Match = calFilters.cast2.length === 0 || calFilters.cast2.includes(i.cast2);
+        return c1Match && c2Match;
+      });
+
       dayItems.sort((a,b) => a.time.localeCompare(b.time));
 
+      // 칩 그리기: 시간 \n 풀네임
       let chipsHtml = dayItems.map(i => {
         const cls = i.isBooked ? 'booked' : '';
-        return `<div class="cs-chip ${cls}">${i.time[0]} ${(i.cast1||'-')[0]}·${(i.cast2||'-')[0]}</div>`;
+        return `<div class="cs-chip ${cls}">
+          <div class="cs-time">${i.time}</div>
+          <div class="cs-cast">${i.cast1 || '-'}, ${i.cast2 || '-'}</div>
+        </div>`;
       }).join('');
 
-      html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSun ? 'sun' : ''}" onclick="openRecordModal('${dateStr}')">
+      html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}" onclick="openRecordModal('${dateStr}')">
         <span class="cal-day-num">${day}</span>
-        <div style="height:${evHeight}px; flex-shrink:0;"></div>
+        <div style="height:${evHeight}px; flex-shrink:0; width:100%;"></div>
         ${chipsHtml}
       </div>`;
     }
 
     if (maxRow > 0) {
-      html += `<div style="position:absolute; top:20px; left:0; right:0; pointer-events:none;">`;
+      html += `<div style="position:absolute; top:24px; left:0; right:0; pointer-events:none;">`;
       for (let row = 0; row < maxRow; row++) {
         html += `<div style="position:relative; height:15px; margin-bottom:1px;">`;
         wSegs.filter(s => s.row === row).forEach(s => {
           const leftPct  = (s.startCol / 7 * 100).toFixed(2);
           const widthPct = ((s.endCol - s.startCol + 1) / 7 * 100).toFixed(2);
-          html += `<div style="position:absolute; left:${leftPct}%; width:calc(${widthPct}% - 2px); height:13px; background:${s.color}; border-radius:2px; display:flex; align-items:center; padding:0 3px; overflow:hidden;">
-            <span style="font-size:8px; font-weight:700; color:#fff; white-space:nowrap;">${s.name}</span>
+          html += `<div style="position:absolute; left:${leftPct}%; width:calc(${widthPct}% - 2px); height:14px; background:${s.color}; border-radius:2px; display:flex; align-items:center; padding:0 4px; overflow:hidden;">
+            <span style="font-size:9px; font-weight:700; color:#fff; white-space:nowrap;">${s.name}</span>
           </div>`;
         });
         html += `</div>`;
