@@ -233,7 +233,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
       <div id="wallet-history" class="collapsible-content">
         <div class="twrap" style="margin:0; padding:0;">
           <table class="record-tb" style="width:100%; font-size:11px;">
-            <thead><tr><th>날짜</th><th>유형</th><th>재관</th><th>창산</th><th>40%</th><th>50%</th><th style="min-width:35px;">프패</th><th style="min-width:100px;">메모</th><th>순서 및 관리</th></tr></thead>
+            <thead><tr><th>날짜</th><th style="min-width:30px;">유형</th><th>재관</th><th>창산</th><th>40%</th><th>50%</th><th style="min-width:35px;">프패</th><th style="min-width:100px;">메모</th><th>순서 및 관리</th></tr></thead>
             <tbody id="wallet-history-body"></tbody>
           </table>
         </div>
@@ -253,9 +253,10 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     <div class="page-title">정산 통계</div>
     <div class="card">
       <div class="card-title">배우별 관람 횟수</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환/나눔 표 제외, 동일 시각 기록은 좌석 있는 표 1개만 산정</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 및 나눔 표 제외, 동일 시각 기록은 좌석 있는 표 1개만 산정</div>
       <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);" id="stats-actors"></table>
     </div>
+    
     <div class="card">
       <div class="card-title">좌석 히트맵</div>
       <div class="heatmap-wrap" id="heatmap-container"></div>
@@ -268,6 +269,24 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
         <div class="legend-item"><div class="legend-dot" style="background:var(--seat5);"></div>5회+</div>
       </div>
     </div>
+    
+    <div class="card">
+      <div class="card-title">관극 회차</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 실관람 기록만 표시 (교환 및 나눔 제외)</div>
+      <div class="twrap" style="margin:0; padding:0;">
+        <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);">
+          <thead>
+            <tr>
+              <th style="color:var(--txt3);">날짜</th>
+              <th style="color:var(--txt3);">시간</th>
+              <th style="color:var(--txt3);">캐스트</th>
+            </tr>
+          </thead>
+          <tbody id="stats-sessions-body"></tbody>
+        </table>
+      </div>
+    </div>
+    
   </div>
 
   <div class="page" id="page-settings">
@@ -449,7 +468,8 @@ const CONFIG = {
     { label: "50% 할인권", value: "50%", useWallet: "d50" },
     { label: "증빙 프리패스", value: "증빙", useWallet: "cert" },
     { label: "타임세일", value: "타임세일" },
-    { label: "교환 / 나눔", value: "교환/나눔" }
+    { label: "교환", value: "교환" },
+    { label: "나눔", value: "나눔" }
   ],
   
   WALLET_FIELDS: [
@@ -526,7 +546,7 @@ function toggleExchangeFilter() {
 
 function formatDiscount(val) {
   if (val === '증빙' || val === '증빙 프리패스') return '프패';
-  if (val === '교환' || val === '교환/나눔') return '교환 / 나눔';
+  if (val === '교환/나눔') return '교환'; // 이전 버전 호환성
   return val || '-';
 }
 
@@ -546,6 +566,7 @@ function renderRecords() {
 
   let sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   
+  // '교환'만 숨김 처리 ('나눔'은 실관람이므로 유지)
   if (hideExchange) {
     sorted = sorted.filter(r => r.discount !== '교환' && r.discount !== '교환/나눔');
   }
@@ -571,7 +592,6 @@ function renderRecords() {
   let tbHtml = sorted.map(r => {
     const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
     
-    // 표에서는 B5-11 형식으로 간소화
     let seatStr = '-';
     if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") {
       seatStr = `${r.seatZone}${r.seatRow}-${r.seatNum}`;
@@ -582,6 +602,8 @@ function renderRecords() {
     }
 
     const dispDisc = formatDiscount(r.discount);
+    
+    // '교환'인 경우에만 옅게 반투명 처리 ('나눔' 제외)
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
     const rowStyle = isExchange ? 'opacity: 0.4;' : '';
 
@@ -744,7 +766,7 @@ function saveRecord() {
   if(existingIdx >= 0) state.records[existingIdx] = record;
   else state.records.push(record);
 
-  saveState(); closeModal('modal-record'); renderRecords(); renderCoupons(); renderCalendar();
+  saveState(); closeModal('modal-record'); renderRecords(); renderCoupons(); renderCalendar(); renderStats();
 }
 
 function editRecord(id) {
@@ -766,7 +788,7 @@ function editRecord(id) {
   document.getElementById('rm-cast1').value = r.cast1 || '';
   document.getElementById('rm-cast2').value = r.cast2 || '';
   
-  document.getElementById('rm-disc').value = r.discount === '교환' ? '교환/나눔' : (r.discount || '');
+  document.getElementById('rm-disc').value = r.discount === '교환/나눔' ? '교환' : (r.discount || '');
   
   document.getElementById('rm-zone').value = r.seatZone || "";
   document.getElementById('rm-row').value = r.seatRow !== null ? r.seatRow : "";
@@ -792,7 +814,7 @@ function editRecord(id) {
 function deleteRecord(id) {
   if(confirm("기록을 삭제하시겠습니까?")) {
     state.records = state.records.filter(r => r.id !== id);
-    saveState(); renderRecords(); renderCalendar(); renderCoupons();
+    saveState(); renderRecords(); renderCalendar(); renderCoupons(); renderStats();
   }
 }
 
@@ -1026,7 +1048,7 @@ function calculateWalletBalance() {
   });
   
   state.records.forEach(r => {
-    // 실관람표이면 재관람 할인표 1개 자동 획득 처리
+    // 실관람(나눔 포함)이면 재관람 할인표 1개 자동 획득 ('교환'만 제외)
     if (r.discount !== '교환' && r.discount !== '교환/나눔') {
       balances['re'] += 1;
     }
@@ -1060,25 +1082,14 @@ function renderCoupons() {
   state.wallet.forEach(w => combinedWallet.push({...w, isAuto: false}));
   
   state.records.forEach(r => {
+    // '교환' 표는 지갑 변동사항에 전혀 표시되지 않음 ('나눔'은 표시됨)
     if (r.discount === '교환' || r.discount === '교환/나눔') return;
 
     const dateParts = r.date.split('-');
     const m = parseInt(dateParts[1], 10);
     const d = parseInt(dateParts[2], 10);
     
-    // 관람에 따른 '재관람표' 자동 획득 내역
-    combinedWallet.push({
-      id: 'auto_add_' + r.id,
-      date: r.date,
-      time: r.time,
-      type: 'add',
-      items: { re: 1 },
-      memo: `${m}/${d} ${r.time} 관극 획득`, 
-      isAuto: true,
-      order: 0 // 획득이 먼저 오도록
-    });
-
-    // 사용에 따른 차감 내역
+    // 사용에 따른 차감 내역 (사용이 먼저!)
     const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
     if (discDef && discDef.useWallet) {
       let items = {};
@@ -1091,17 +1102,31 @@ function renderCoupons() {
         items: items,
         memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, 
         isAuto: true,
-        order: 1 // 사용이 뒤에 오도록
+        order: 0 // 사용 차감이 먼저 오도록
       });
     }
+
+    // 관람에 따른 '재관람표' 자동 획득 내역 (사용 후 획득!)
+    combinedWallet.push({
+      id: 'auto_add_' + r.id,
+      date: r.date,
+      time: r.time,
+      type: 'add',
+      items: { re: 1 },
+      memo: `${m}/${d} ${r.time} 관극 획득`, 
+      isAuto: true,
+      order: 1 // 획득 내역이 뒤에 오도록
+    });
   });
 
   // 오래된 순서대로 정렬 (과거 -> 현재)
+  // 날짜 오름차순 -> 시간 오름차순 -> 사용/획득 순서(order)
   combinedWallet.sort((a,b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date); // 오름차순 정렬
-    const orderDiff = (a.order || 0) - (b.order || 0);
-    if (orderDiff !== 0) return orderDiff;
-    return (a.time || "").localeCompare(b.time || ""); // 낮 -> 밤
+    if (a.date !== b.date) return a.date.localeCompare(b.date); 
+    const timeA = a.time || "";
+    const timeB = b.time || "";
+    if (timeA !== timeB) return timeA.localeCompare(timeB);
+    return (a.order || 0) - (b.order || 0);
   });
 
   const histTbody = document.getElementById('wallet-history-body');
@@ -1115,8 +1140,7 @@ function renderCoupons() {
       const dateDisp = `${parseInt(ds[1])}.${parseInt(ds[2])}(${getDow(w.date)})`;
       
       const isAdd = w.type === 'add';
-      // 유형 텍스트 노란색에서 흰색(--txt)으로 변경
-      const typeHtml = isAdd ? `<span style="color:var(--txt); font-weight:700;">획득</span>` : `<span style="color:var(--txt); font-weight:700;">사용</span>`;
+      const typeHtml = isAdd ? `<span style="color:var(--txt); font-weight:700; font-size:16px;">+</span>` : `<span style="color:var(--txt); font-weight:700; font-size:16px;">-</span>`;
       
       let colHtml = '';
       CONFIG.WALLET_FIELDS.forEach(f => {
@@ -1293,7 +1317,8 @@ function renderStats() {
   let grouped = {};
 
   state.records.forEach(r => {
-    if (r.discount === '교환' || r.discount === '교환/나눔') return;
+    // '교환'과 '나눔' 모두 정산에서 제외
+    if (r.discount === '교환' || r.discount === '교환/나눔' || r.discount === '나눔') return;
     
     let k = r.date + '_' + r.time;
     if (!grouped[k]) grouped[k] = [];
@@ -1376,6 +1401,23 @@ function renderStats() {
   let hmHtml = '';
   zones.forEach(z => { hmHtml += `<div class="zone-col"><div style="font-size:10px; font-weight:700; color:var(--txt3); margin-bottom:4px;">${z.name}구역</div>${zHtml[z.name]}</div>`; });
   document.getElementById('heatmap-container').innerHTML = hmHtml;
+
+  // --- 추가된 관극 회차 렌더링 ---
+  // validRecords를 날짜/시간 순으로 정렬
+  let sortedSessions = [...validRecords].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  
+  let sessionsHtml = sortedSessions.map(r => {
+    const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
+    const shortDate = r.date.substring(5).replace('-', '.'); // e.g., 04.28
+    return `<tr>
+      <td style="font-weight:600;">${shortDate}</td>
+      <td>${r.time}</td>
+      <td style="color:var(--red3); font-weight:600;">${castStr}</td>
+    </tr>`;
+  }).join('');
+  
+  if(!sessionsHtml) sessionsHtml = `<tr><td colspan="3" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
+  document.getElementById('stats-sessions-body').innerHTML = sessionsHtml;
 }
 
 // ============================================================
