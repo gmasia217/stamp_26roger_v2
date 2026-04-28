@@ -145,9 +145,17 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .cs-chip.booked .cs-time, .cs-chip.booked .cs-cast { color:var(--red); }
 
 /* WALLET & STAMPS */
-.wallet-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:16px; }
-.wcard { background:var(--bg3); border:1px solid var(--brd2); border-radius:8px; text-align:center; padding:10px 4px; }
-.wcard-num { font-size:20px; font-weight:700; color:var(--grn); font-family:'IBM Plex Sans KR'; margin:4px 0; }
+.wallet-grid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.wcard { width:calc(50% - 4px); flex-grow:1; background:var(--bg3); border:1px solid var(--brd2); border-radius:6px; text-align:center; display:flex; flex-direction:column; overflow:hidden; }
+.wcard-header { background:var(--bg4); padding:8px 4px; font-size:11px; color:var(--txt2); font-weight:600; border-bottom:1px solid var(--brd2); }
+.wcard-body { display:flex; }
+.wcard-half { flex:1; padding:12px 0; }
+.wcard-half:first-child { border-right:1px solid var(--brd2); }
+.wcard-label-curr { font-size:10px; color:var(--grn); font-weight:700; margin-bottom:6px; }
+.wcard-label-final { font-size:10px; color:var(--txt3); font-weight:600; margin-bottom:6px; }
+.wcard-sub { font-size:10px; color:var(--txt4); margin-top:6px; transform:scale(0.85); transform-origin:center; white-space:nowrap; }
+.wcard-val { font-size:22px; font-weight:700; font-family:'IBM Plex Sans KR'; }
+
 .collapsible-content { display:none; margin-top:12px; border-top:1px dashed var(--brd2); padding-top:12px; }
 .collapsible-content.open { display:block; }
 
@@ -272,7 +280,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     
     <div class="card">
       <div class="card-title">관극 회차</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 실관람 기록만 표시 (교환 제외)</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 실관람 기록 중 좌석 정보가 있는 표만 표시 (교환 제외)</div>
       <div class="twrap" style="margin:0; padding:0;">
         <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);">
           <thead>
@@ -547,7 +555,7 @@ function toggleExchangeFilter() {
 
 function formatDiscount(val) {
   if (val === '증빙' || val === '증빙 프리패스') return '프패';
-  if (val === '교환/나눔') return '교환'; // 호환성
+  if (val === '교환/나눔') return '교환'; // 과거 데이터 호환성 유지
   return val || '-';
 }
 
@@ -603,7 +611,7 @@ function renderRecords() {
 
     const dispDisc = formatDiscount(r.discount);
     
-    // 교환 표의 내용물(div)만 투명도를 주어 표 외곽선은 유지
+    // 교환 표의 내용물(div)만 옅게 처리하여 표 외곽선 유지
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
     const dimCls = isExchange ? 'opacity: 0.3;' : '';
 
@@ -703,7 +711,6 @@ function onTimeChange() {
 }
 
 function renderBoardCheckboxesInModal(selectedId = "") {
-  // 선택 안 함 옵션 추가 (selectedId가 비어있으면 체크)
   let html = `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
     <input type="radio" name="rm-board-radio" value="" ${selectedId === "" ? 'checked' : ''}> 선택 안 함
   </label>`;
@@ -743,7 +750,7 @@ function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-memo').value = "";
 
   selectMult(1); 
-  renderBoardCheckboxesInModal(""); // 새로 추가 시 기본은 '선택 안 함'
+  renderBoardCheckboxesInModal(""); // 기본값 '선택 안 함'
 
   openModal('modal-record');
 }
@@ -1045,27 +1052,38 @@ function renderCalendar() {
 // ============================================================
 // 6. TAB 3: COUPON & STAMPS 
 // ============================================================
-function calculateWalletBalance() {
-  let balances = {};
-  CONFIG.WALLET_FIELDS.forEach(f => balances[f.id] = 0);
+function calculateWalletBalances() {
+  let current = {};
+  let final = {};
+  CONFIG.WALLET_FIELDS.forEach(f => { current[f.id] = 0; final[f.id] = 0; });
   
+  const today = todayStr();
+
   state.wallet.forEach(w => {
     CONFIG.WALLET_FIELDS.forEach(f => {
-      if(w.items[f.id]) balances[f.id] += (w.type === 'add' ? w.items[f.id] : -w.items[f.id]);
+      if(w.items[f.id]) {
+        const val = w.type === 'add' ? w.items[f.id] : -w.items[f.id];
+        final[f.id] += val;
+        if (w.date <= today) current[f.id] += val;
+      }
     });
   });
   
   state.records.forEach(r => {
     // 실관람이면 재관람 할인표 1개 자동 획득 ('교환'만 제외)
     if (r.discount !== '교환' && r.discount !== '교환/나눔') {
-      balances['re'] += 1;
+      final['re'] += 1;
+      if (r.date <= today) current['re'] += 1;
     }
     // 할인권 사용 시 자동 차감
     const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
-    if(discDef && discDef.useWallet) balances[discDef.useWallet] -= 1;
+    if(discDef && discDef.useWallet) {
+      final[discDef.useWallet] -= 1;
+      if (r.date <= today) current[discDef.useWallet] -= 1;
+    }
   });
   
-  return balances;
+  return { current, final };
 }
 
 function moveWalletOrder(id, delta) {
@@ -1078,13 +1096,35 @@ function moveWalletOrder(id, delta) {
 }
 
 function renderCoupons() {
-  const bals = calculateWalletBalance();
-  document.getElementById('wallet-cards').innerHTML = CONFIG.WALLET_FIELDS.map(f => `
-    <div class="wcard">
-      <div style="font-size:10px; color:var(--txt3); margin-bottom:4px;">${f.label}</div>
-      <div class="wcard-num" style="color:${bals[f.id] < 0 ? 'var(--red3)' : 'var(--grn)'}">${bals[f.id]}</div>
-    </div>
-  `).join('');
+  const bals = calculateWalletBalances();
+  
+  const getColor = (val) => {
+    if(val > 0) return 'var(--txt)';
+    if(val < 0) return 'var(--red4)';
+    return 'var(--txt3)';
+  };
+
+  document.getElementById('wallet-cards').innerHTML = CONFIG.WALLET_FIELDS.map(f => {
+    const cVal = bals.current[f.id];
+    const fVal = bals.final[f.id];
+    return `
+      <div class="wcard">
+        <div class="wcard-header">${f.label}</div>
+        <div class="wcard-body">
+          <div class="wcard-half">
+            <div class="wcard-label-curr">현재</div>
+            <div class="wcard-val" style="color:${getColor(cVal)}">${cVal}</div>
+            <div class="wcard-sub">오늘까지 잔여</div>
+          </div>
+          <div class="wcard-half">
+            <div class="wcard-label-final">최종</div>
+            <div class="wcard-val" style="color:${getColor(fVal)}">${fVal}</div>
+            <div class="wcard-sub">입력 전체 기준</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 
   let combinedWallet = [];
   state.wallet.forEach(w => combinedWallet.push({...w, isAuto: false}));
@@ -1410,7 +1450,9 @@ function renderStats() {
   document.getElementById('heatmap-container').innerHTML = hmHtml;
 
   // --- 추가된 관극 회차 렌더링 ---
-  let sortedSessions = [...validRecords].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  // 좌석 정보가 있는 기록만 필터링 (구역이라도 적혀있어야 함)
+  let sessionRecords = validRecords.filter(r => r.seatZone && r.seatZone.trim() !== "");
+  let sortedSessions = [...sessionRecords].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   
   const getEventName = (d) => {
     const evs = state.events.filter(e => d >= e.startDate && d <= e.endDate);
