@@ -60,15 +60,17 @@ body { background:var(--bg); color:var(--txt); font-family:'Pretendard', sans-se
 .btn.grn { background:var(--grn); border-color:var(--grn); color:#000; font-weight:700; }
 .flex-between { display:flex; justify-content:space-between; align-items:center; }
 
-/* TABLE (관극 기록) - Sticky Columns 적용 */
-.twrap { overflow-x:auto; margin:0 -16px; padding:0 16px; }
-table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border:1px solid var(--brd); }
+/* TABLE (관극 기록) - 가로 스크롤 및 Sticky 틀 고정 */
+.twrap { overflow-x:auto; margin:0 -16px; padding:0 16px; -webkit-overflow-scrolling: touch; }
+table.record-tb { width:max-content; min-width:100%; border-collapse:separate; border-spacing:0; border:1px solid var(--brd); border-left:0; border-top:0; }
 .record-tb th, .record-tb td { padding:8px 6px; border-bottom:1px solid var(--brd); border-right:1px solid var(--brd); text-align:center; white-space:nowrap; font-size:12px; }
-.record-tb thead th { background:var(--bg4); position:sticky; top:0; z-index:21; font-size:10px; color:var(--txt3); }
-.record-tb th:nth-child(1), .record-tb td:nth-child(1) { position:sticky; left:0; z-index:20; background:var(--bg4); }
-.record-tb th:nth-child(2), .record-tb td:nth-child(2) { position:sticky; left:70px; z-index:20; background:var(--bg4); border-right:2px solid var(--red); }
-.record-tb td:nth-child(1), .record-tb td:nth-child(2) { background:var(--bg2); }
-.record-tb thead th:nth-child(1), .record-tb thead th:nth-child(2) { z-index:22; }
+.record-tb thead th { border-top:1px solid var(--brd); background:var(--bg4); position:sticky; top:0; z-index:21; font-size:10px; color:var(--txt3); }
+
+/* 고정(Sticky) 열 설정 (1:날짜, 2:시간, 3:캐스트) */
+.st-date { position:sticky; left:0; z-index:20; background:var(--bg2); border-left:1px solid var(--brd); min-width:55px; max-width:55px; }
+.st-time { position:sticky; left:55px; z-index:20; background:var(--bg2); min-width:45px; max-width:45px; }
+.st-cast { position:sticky; left:100px; z-index:20; background:var(--bg2); min-width:85px; max-width:85px; border-right:2px solid var(--red) !important; overflow:hidden; text-overflow:ellipsis; }
+.record-tb thead .st-date, .record-tb thead .st-time, .record-tb thead .st-cast { background:var(--bg4); z-index:22; }
 
 /* FORMS & MODALS */
 .finput, .fselect { width:100%; background:var(--bg3); border:1px solid var(--brd2); color:var(--txt); padding:10px 12px; font-family:inherit; font-size:13px; border-radius:6px; outline:none; color-scheme:dark; }
@@ -163,7 +165,7 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
         ▶ 할인권 상세 기록 (접기/펴기)
       </div>
       <div id="wallet-history" class="collapsible-content">
-        <table class="record-tb" style="width:100%; font-size:11px;">
+        <table class="record-tb" style="width:100%; font-size:11px; border-left:1px solid var(--brd);">
           <thead><tr><th>날짜</th><th>유형</th><th>내역</th><th>메모</th><th>관리</th></tr></thead>
           <tbody id="wallet-history-body"></tbody>
         </table>
@@ -184,7 +186,7 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
     
     <div class="card">
       <div class="card-title">배우별 관람 횟수</div>
-      <table class="record-tb" style="width:100%;" id="stats-actors"></table>
+      <table class="record-tb" style="width:100%; border-left:1px solid var(--brd);" id="stats-actors"></table>
     </div>
 
     <div class="card">
@@ -210,14 +212,14 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
           <div style="font-size:13px;">스케줄 업데이트</div>
           <div id="set-sch-time" style="font-size:10px; color:var(--txt4);">확인 중...</div>
         </div>
-        <button class="btn sm" onclick="alert('스케줄을 업데이트합니다.')">새로고침</button>
+        <button class="btn sm" onclick="fetchSchedule(true)">새로고침</button>
       </div>
       <div class="flex-between">
         <div>
           <div style="font-size:13px;">이벤트 업데이트</div>
           <div id="set-evt-time" style="font-size:10px; color:var(--txt4);">확인 중...</div>
         </div>
-        <button class="btn sm" onclick="alert('이벤트를 업데이트합니다.')">새로고침</button>
+        <button class="btn sm" onclick="fetchEvents(true)">새로고침</button>
       </div>
     </div>
 
@@ -248,11 +250,11 @@ table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border
     <div style="display:flex; gap:10px;">
       <div class="fg" style="flex:1;">
         <label class="flbl">날짜</label>
-        <input type="date" id="rm-date" class="finput">
+        <input type="date" id="rm-date" class="finput" onchange="autoFillCasting()">
       </div>
       <div class="fg" style="width:80px;">
         <label class="flbl">시간</label>
-        <select id="rm-time" class="fselect">
+        <select id="rm-time" class="fselect" onchange="onTimeChange()">
           <option value="낮">낮</option><option value="밤">밤</option>
         </select>
       </div>
@@ -317,13 +319,11 @@ const CONFIG = {
   SHOW_NAME: "라져",
   STORAGE_KEY: "musical_tracker_v3",
   
-  // 배역 설정 (참고 코드의 라져 배역 그대로 반영)
   ROLES: [
     { id: "cast1", label: "스카일러", actors: ["주민진", "고상호", "기세중"] },
     { id: "cast2", label: "디디", actors: ["정휘", "이한솔", "박주혁"] }
   ],
   
-  // 이벤트 설정 (캘린더 배너용)
   EVENTS: [
     { name:'스페셜커튼콜', startDate:'2026-03-31', endDate:'2026-04-05', color:'#8B5CF6' },
     { name:'트리플적립',   startDate:'2026-04-07', endDate:'2026-04-12', color:'#F59E0B' }
@@ -356,7 +356,9 @@ const CONFIG = {
 let state = {
   records: [], 
   boards: [{ id: "b1", name: "1", initial: 0, active: true }],
-  wallet: []   
+  wallet: [],
+  schedule: [],
+  events: []
 };
 
 function loadState() {
@@ -389,22 +391,27 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 function toggleCollapsible(id) { document.getElementById(id).classList.toggle('open'); }
 
 // ============================================================
-// 4. TAB 1: RECORD (관극 기록)
+// 4. TAB 1: RECORD (관극 기록) - Sticky & Full Cast
 // ============================================================
 function renderRecords() {
-  let thHtml = `<tr><th style="min-width:70px;">날짜</th><th style="min-width:90px;">캐스트</th><th>시간</th><th>할인</th>`;
+  let thHtml = `<tr>
+    <th class="st-date">날짜</th>
+    <th class="st-time">시간</th>
+    <th class="st-cast">캐스트</th>
+    <th>할인</th>`;
   state.boards.forEach(b => { thHtml += `<th style="color:var(--txt3); font-size:10px;">${b.name}</th>`; });
   thHtml += `<th>좌석</th><th>관리</th></tr>`;
   document.getElementById('record-thead').innerHTML = thHtml;
 
   const sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   let tbHtml = sorted.map(r => {
-    const castStr = `${(r.cast1||'-')[0]}·${(r.cast2||'-')[0]}`;
+    // 3. 캐스트 이름 줄이지 않고 풀네임으로 합치기
+    const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
     const seatStr = r.seatZone && r.seatRow !== "" ? `${r.seatZone}-${r.seatRow}` : '-';
     let rowHtml = `<tr>
-      <td>${r.date.substring(5)}</td>
-      <td style="font-weight:600; color:var(--red3);">${castStr}</td>
-      <td>${r.time}</td>
+      <td class="st-date">${r.date.substring(5).replace('-','.')}</td>
+      <td class="st-time">${r.time}</td>
+      <td class="st-cast" style="font-weight:600; color:var(--red3);" title="${castStr}">${castStr}</td>
       <td style="font-size:10px;">${r.discount || '-'}</td>`;
     
     state.boards.forEach(b => {
@@ -420,7 +427,7 @@ function renderRecords() {
     return rowHtml;
   }).join('');
   
-  if(!tbHtml) tbHtml = `<tr><td colspan="${6+state.boards.length}" style="padding:40px 0; color:var(--txt4);">기록이 없습니다</td></tr>`;
+  if(!tbHtml) tbHtml = `<tr><td colspan="${6+state.boards.length}" style="padding:40px 0; color:var(--txt4); position:sticky; left:0;">기록이 없습니다</td></tr>`;
   document.getElementById('record-tbody').innerHTML = tbHtml;
 }
 
@@ -437,13 +444,58 @@ function initRecordForm() {
   document.getElementById('rm-disc').innerHTML = CONFIG.DISCOUNTS.map(d => `<option value="${d.value}">${d.label}</option>`).join('');
 }
 
-function openRecordModal(date = '') {
+// 스케줄 자동 연동 로직
+function autoFillCasting() {
+  const date = document.getElementById('rm-date').value;
+  const timeSelect = document.getElementById('rm-time');
+  if (!date || !state.schedule) return;
+  
+  const matches = state.schedule.filter(s => s.date === date);
+  if (matches.length > 0) {
+    const cur = timeSelect.value;
+    timeSelect.innerHTML = '<option value="">선택</option>';
+    matches.sort((a,b)=>a.time.localeCompare(b.time)).forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.time; o.textContent = s.time;
+      timeSelect.appendChild(o);
+    });
+    
+    const setCasts = (m) => {
+      document.getElementById('rm-cast1').value = m.cast1 || m.skylar || '';
+      document.getElementById('rm-cast2').value = m.cast2 || m.didi || '';
+    };
+
+    if (matches.length === 1) {
+      timeSelect.value = matches[0].time;
+      setCasts(matches[0]);
+    } else if (cur) {
+      timeSelect.value = cur;
+      const m = matches.find(s => s.time === cur);
+      if (m) setCasts(m);
+    }
+  } else {
+    timeSelect.innerHTML = `<option value="낮">낮</option><option value="밤">밤</option>`;
+  }
+}
+
+function onTimeChange() {
+  const date = document.getElementById('rm-date').value;
+  const time = document.getElementById('rm-time').value;
+  if (!date || !time || !state.schedule) return;
+  const m = state.schedule.find(s => s.date === date && s.time === time);
+  if (m) {
+    document.getElementById('rm-cast1').value = m.cast1 || m.skylar || '';
+    document.getElementById('rm-cast2').value = m.cast2 || m.didi || '';
+  }
+}
+
+function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-title').textContent = "회차 기록 추가";
   document.getElementById('rm-id').value = "";
   document.getElementById('rm-date').value = date || todayStr();
-  document.getElementById('rm-time').value = "낮";
-  document.getElementById('rm-cast1').value = "";
-  document.getElementById('rm-cast2').value = "";
+  
+  if (!isEdit) autoFillCasting();
+
   document.getElementById('rm-disc').value = "";
   document.getElementById('rm-zone').value = "";
   document.getElementById('rm-row').value = "";
@@ -482,23 +534,29 @@ function saveRecord() {
   if(existingIdx >= 0) state.records[existingIdx] = record;
   else state.records.push(record);
 
-  saveState();
-  closeModal('modal-record');
-  renderRecords();
-  renderCoupons();
+  saveState(); closeModal('modal-record'); renderRecords(); renderCoupons(); renderCalendar();
 }
 
 function editRecord(id) {
   const r = state.records.find(x => x.id === id);
   if(!r) return;
-  openRecordModal();
+  
+  openRecordModal('', true);
   document.getElementById('rm-title').textContent = "회차 기록 수정";
   document.getElementById('rm-id').value = r.id;
   document.getElementById('rm-date').value = r.date;
-  document.getElementById('rm-time').value = r.time;
-  document.getElementById('rm-cast1').value = r.cast1;
-  document.getElementById('rm-cast2').value = r.cast2;
-  document.getElementById('rm-disc').value = r.discount;
+  
+  autoFillCasting(); // 해당 날짜의 시간대 옵션 로드
+  
+  const timeSelect = document.getElementById('rm-time');
+  if (!timeSelect.querySelector(`option[value="${r.time}"]`)) {
+    timeSelect.innerHTML += `<option value="${r.time}">${r.time}</option>`;
+  }
+  
+  document.getElementById('rm-time').value = r.time || '';
+  document.getElementById('rm-cast1').value = r.cast1 || '';
+  document.getElementById('rm-cast2').value = r.cast2 || '';
+  document.getElementById('rm-disc').value = r.discount || '';
   document.getElementById('rm-zone').value = r.seatZone || "";
   document.getElementById('rm-row').value = r.seatRow !== null ? r.seatRow : "";
   document.getElementById('rm-num').value = r.seatNum || "";
@@ -512,13 +570,12 @@ function editRecord(id) {
 function deleteRecord(id) {
   if(confirm("기록을 삭제하시겠습니까?")) {
     state.records = state.records.filter(r => r.id !== id);
-    saveState();
-    renderRecords();
+    saveState(); renderRecords(); renderCalendar();
   }
 }
 
 // ============================================================
-// 5. TAB 2: CALENDAR (이벤트 배너 추가)
+// 5. TAB 2: CALENDAR (스케줄 연동 및 이벤트 배너 적용)
 // ============================================================
 let curYear = new Date().getFullYear();
 let curMonth = new Date().getMonth(); 
@@ -553,9 +610,9 @@ function renderCalendar() {
   const monthStart = `${monthStr}-01`;
   const monthEnd = `${monthStr}-${String(daysInMonth).padStart(2,'0')}`;
 
-  // 이벤트 배너 겹침 연산 (최대 3줄)
+  const evts = state.events && state.events.length ? state.events : CONFIG.EVENTS;
   const segments = [];
-  CONFIG.EVENTS.forEach(ev => {
+  evts.forEach(ev => {
     if (ev.endDate < monthStart || ev.startDate > monthEnd) return;
     const clampedStart = ev.startDate < monthStart ? monthStart : ev.startDate;
     const clampedEnd   = ev.endDate   > monthEnd   ? monthEnd   : ev.endDate;
@@ -579,7 +636,7 @@ function renderCalendar() {
   const dow = ['일','월','화','수','목','금','토'];
   let html = `<div class="cal-grid">`;
   dow.forEach(d => html += `<div class="cal-dow">${d}</div>`);
-  html += `</div>`; // header end
+  html += `</div>`; 
   
   for(let w=0; w<weeks; w++) {
     const wSegs = segments.filter(s => s.week === w);
@@ -600,15 +657,24 @@ function renderCalendar() {
       const isToday = dateStr === todayStr();
       const isSun = new Date(curYear, curMonth, day).getDay() === 0;
       
-      const dayRecs = state.records.filter(r => {
-        if(r.date !== dateStr) return false;
-        if(calFilter && r.cast1 !== calFilter && r.cast2 !== calFilter) return false;
-        return true;
+      // 스케줄과 기록 병합 로직
+      let dayItems = [];
+      (state.schedule || []).filter(s => s.date === dateStr).forEach(s => {
+        dayItems.push({ time: s.time, cast1: s.cast1 || s.skylar, cast2: s.cast2 || s.didi, isBooked: false });
+      });
+      state.records.filter(r => r.date === dateStr).forEach(r => {
+        let existing = dayItems.find(i => i.time === r.time);
+        if (existing) { existing.isBooked = true; existing.cast1 = r.cast1; existing.cast2 = r.cast2; } 
+        else { dayItems.push({ time: r.time, cast1: r.cast1, cast2: r.cast2, isBooked: true }); }
       });
 
-      let chipsHtml = dayRecs.map(r => `
-        <div class="cs-chip booked">${r.time[0]} ${(r.cast1||'-')[0]}·${(r.cast2||'-')[0]}</div>
-      `).join('');
+      dayItems = dayItems.filter(i => !calFilter || i.cast1 === calFilter || i.cast2 === calFilter);
+      dayItems.sort((a,b) => a.time.localeCompare(b.time));
+
+      let chipsHtml = dayItems.map(i => {
+        const cls = i.isBooked ? 'booked' : '';
+        return `<div class="cs-chip ${cls}">${i.time[0]} ${(i.cast1||'-')[0]}·${(i.cast2||'-')[0]}</div>`;
+      }).join('');
 
       html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSun ? 'sun' : ''}" onclick="openRecordModal('${dateStr}')">
         <span class="cal-day-num">${day}</span>
@@ -617,7 +683,6 @@ function renderCalendar() {
       </div>`;
     }
 
-    // 이벤트 배너 그리기
     if (maxRow > 0) {
       html += `<div style="position:absolute; top:20px; left:0; right:0; pointer-events:none;">`;
       for (let row = 0; row < maxRow; row++) {
@@ -802,7 +867,6 @@ function renderStats() {
   });
   document.getElementById('stats-actors').innerHTML = actorStatsHtml;
 
-  // 히트맵 데이터 매핑
   let seatMap = {};
   state.records.forEach(r => {
     if(r.seatZone && r.seatRow !== "" && r.seatNum !== "") {
@@ -820,7 +884,6 @@ function renderStats() {
     return '';
   };
 
-  // A구역: 2~13행 4열 / B구역: 0~13행(0행=12열, 1~13행=13열) / C구역: 2~13행 4열
   const zones = [
     { name:'A', s:2, e:13, cols:()=>4 },
     { name:'B', s:0, e:13, cols:(r)=>r===0?12:13 },
@@ -828,17 +891,12 @@ function renderStats() {
   ];
 
   let zHtml = { A:'', B:'', C:'' };
-  
-  // 0열부터 13열까지 루프
   for (let row = 0; row <= 13; row++) {
     zones.forEach(z => {
       if (row < z.s || row > z.e) {
-        // A/C 구역의 0~1열은 비워둬서 B구역과 높이를 맞춤
         zHtml[z.name] += `<div class="seat-row"><div class="row-label"></div>`;
         const emptyCnt = z.name === 'B' ? (row === 0 ? 12 : 13) : 4;
-        for (let i = 0; i < emptyCnt; i++) {
-          zHtml[z.name] += `<div class="seat-cell" style="visibility:hidden;"></div>`;
-        }
+        for (let i = 0; i < emptyCnt; i++) zHtml[z.name] += `<div class="seat-cell" style="visibility:hidden;"></div>`;
         zHtml[z.name] += `</div>`;
       } else {
         const colCnt = z.cols(row);
@@ -862,8 +920,46 @@ function renderStats() {
 }
 
 // ============================================================
-// 8. TAB 5: SETTINGS & BACKUP
+// 8. TAB 5: SETTINGS (스케줄 연동 기능 구현) & BACKUP
 // ============================================================
+async function fetchSchedule(manual = false) {
+  const statusEl = document.getElementById('set-sch-time');
+  if (statusEl) statusEl.textContent = '불러오는 중...';
+  try {
+    const res = await fetch('./schedule.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    state.schedule = data;
+    saveState();
+    const now = new Date().toLocaleString('ko-KR', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    if (statusEl) statusEl.textContent = now;
+    if (manual) alert(`스케줄 ${data.length}개 업데이트 완료`);
+    renderCalendar();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '캐시 사용 중 (오프라인)';
+    if (manual) alert('오프라인 상태이거나 schedule.json 파일이 없습니다.');
+  }
+}
+
+async function fetchEvents(manual = false) {
+  const statusEl = document.getElementById('set-evt-time');
+  if (statusEl) statusEl.textContent = '불러오는 중...';
+  try {
+    const res = await fetch('./events.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    state.events = data;
+    saveState();
+    const now = new Date().toLocaleString('ko-KR', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    if (statusEl) statusEl.textContent = now;
+    if (manual) alert(`이벤트 ${data.length}개 업데이트 완료`);
+    renderCalendar();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '캐시 사용 중 (오프라인)';
+    if (manual) alert('오프라인 상태이거나 events.json 파일이 없습니다.');
+  }
+}
+
 function exportData() {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -899,6 +995,8 @@ window.onload = () => {
   initRecordForm();
   initWalletForm();
   loadState();
+  fetchSchedule(false);
+  fetchEvents(false);
   switchTab('record', document.querySelector('.tab-btn')); 
 };
 </script>
