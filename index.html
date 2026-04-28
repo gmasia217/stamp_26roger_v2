@@ -107,6 +107,13 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .modal.center { border-radius:16px; border:1px solid var(--brd2); animation:popIn 0.2s ease; margin:auto; width:100%; max-width:400px; }
 @keyframes popIn { from { transform:scale(0.95); opacity:0; } to { transform:scale(1); opacity:1; } }
 
+/* --- 상세 팝업 내부 텍스트 정렬용 추가 스타일 --- */
+.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.detail-date-title { font-size: 18px; font-weight: 700; color: var(--txt); font-family: 'IBM Plex Sans KR', sans-serif; }
+.detail-info-row { font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; }
+.dt-label { color: var(--txt3); font-weight: 600; margin-right: 12px; width: 40px; }
+.dt-value { color: var(--txt); font-weight: 500; }
+
 /* MINI SEAT GRID (For Detail Modal) */
 .mini-hm-container { display: flex; gap: 12px; justify-content: center; margin: 16px 0; border: 1px solid var(--brd2); padding: 16px; border-radius: 8px; background: var(--bg); }
 .mini-zone-col { display:flex; flex-direction:column; gap:2px; align-items:center; }
@@ -360,17 +367,17 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 
 <div class="overlay center" id="modal-detail" onclick="if(event.target===this) closeModal('modal-detail')">
   <div class="modal center" style="background:var(--bg2); padding:20px; border-radius:16px; border:1px solid var(--brd2);">
-    <div class="flex-between detail-header">
+    <div class="detail-header">
       <div class="detail-date-title" id="dt-title"></div>
       <button class="btn sm ghost" onclick="closeModal('modal-detail')" style="font-size:16px; padding:0 6px;">✕</button>
     </div>
     <div class="detail-info-row">
-      <span style="color:var(--txt3); font-weight:600; margin-right:6px;">CAST:</span> 
-      <span id="dt-cast" style="color:var(--txt); font-weight:400;"></span>
+      <span class="dt-label">CAST</span>
+      <span id="dt-cast" class="dt-value"></span>
     </div>
     <div class="detail-info-row">
-      <span style="color:var(--txt3); font-weight:600; margin-right:6px;">SEAT:</span> 
-      <span id="dt-seat" style="color:var(--txt); font-weight:400;"></span>
+      <span class="dt-label">SEAT</span>
+      <span id="dt-seat" class="dt-value"></span>
     </div>
     
     <div id="dt-minimap"></div>
@@ -535,12 +542,14 @@ function renderRecords() {
   let tbHtml = sorted.map(r => {
     const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
     let seatStr = '-';
-    if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") seatStr = `${r.seatZone}${r.seatRow}-${r.seatNum}`;
-    else if (r.seatZone && r.seatRow !== "") seatStr = `${r.seatZone}${r.seatRow}`;
-    else if (r.seatZone) seatStr = r.seatZone;
+    if (r.seatZone) {
+      seatStr = `${r.seatZone}구역`;
+      if (r.seatRow != null && r.seatRow !== "") seatStr += ` ${r.seatRow}열`;
+      if (r.seatNum != null && r.seatNum !== "") seatStr += ` ${r.seatNum}번`;
+    }
 
-    let rowHtml = `<tr onclick="openDetailModal('${r.id}')" style="cursor:pointer;" class="hover-row">
-      <td class="st-date">${r.date.substring(5).replace('-','.')}</td>
+    let rowHtml = `<tr class="hover-row">
+      <td class="st-date" onclick="openDetailModal('${r.id}')" style="cursor:pointer; text-decoration:underline; text-underline-offset:2px; color:var(--red4);">${r.date.substring(5).replace('-','.')}</td>
       <td class="st-time">${r.time}</td>
       <td class="st-cast" style="font-weight:600; color:var(--red3);" title="${castStr}">${castStr}</td>
       <td style="font-size:10px;">${r.discount || '-'}</td>
@@ -762,9 +771,11 @@ function openDetailModal(id) {
   document.getElementById('dt-cast').textContent = `${r.cast1||'-'}, ${r.cast2||'-'}`;
   
   let seatStr = '-';
-  if (r.seatZone && r.seatRow !== "" && r.seatNum !== "") seatStr = `${r.seatZone}구역 ${r.seatRow}열 ${r.seatNum}번`;
-  else if (r.seatZone && r.seatRow !== "") seatStr = `${r.seatZone}구역 ${r.seatRow}열`;
-  else if (r.seatZone) seatStr = `${r.seatZone}구역`;
+  if (r.seatZone) {
+    seatStr = `${r.seatZone}구역`;
+    if (r.seatRow != null && r.seatRow !== "") seatStr += ` ${r.seatRow}열`;
+    if (r.seatNum != null && r.seatNum !== "") seatStr += ` ${r.seatNum}번`;
+  }
   
   document.getElementById('dt-seat').textContent = seatStr;
   document.getElementById('dt-minimap').innerHTML = renderMiniMap(r.seatZone, parseInt(r.seatRow), parseInt(r.seatNum));
