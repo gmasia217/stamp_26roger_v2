@@ -1,0 +1,20 @@
+{
+  "name": "ROGER 관극 다이어리",
+  "short_name": "ROGER",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#071120",
+  "theme_color": "#071120",
+  "icons": [
+    {
+      "src": "roger_icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "roger_icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
