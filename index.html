@@ -253,7 +253,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     <div class="page-title">정산 통계</div>
     <div class="card">
       <div class="card-title">배우별 관람 횟수</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 및 나눔 표 제외, 동일 시각 기록은 좌석 있는 표 1개만 산정</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 표 제외, 동일 시각 기록은 좌석 있는 표 1개만 산정</div>
       <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);" id="stats-actors"></table>
     </div>
     
@@ -272,7 +272,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     
     <div class="card">
       <div class="card-title">관극 회차</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 실관람 기록만 표시 (교환 및 나눔 제외)</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 실관람 기록만 표시 (교환 제외)</div>
       <div class="twrap" style="margin:0; padding:0;">
         <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);">
           <thead>
@@ -280,6 +280,8 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
               <th style="color:var(--txt3);">날짜</th>
               <th style="color:var(--txt3);">시간</th>
               <th style="color:var(--txt3);">캐스트</th>
+              <th style="color:var(--txt3);">좌석</th>
+              <th style="color:var(--txt3);">이벤트</th>
             </tr>
           </thead>
           <tbody id="stats-sessions-body"></tbody>
@@ -468,8 +470,7 @@ const CONFIG = {
     { label: "50% 할인권", value: "50%", useWallet: "d50" },
     { label: "증빙 프리패스", value: "증빙", useWallet: "cert" },
     { label: "타임세일", value: "타임세일" },
-    { label: "교환", value: "교환" },
-    { label: "나눔", value: "나눔" }
+    { label: "교환", value: "교환" }
   ],
   
   WALLET_FIELDS: [
@@ -546,7 +547,7 @@ function toggleExchangeFilter() {
 
 function formatDiscount(val) {
   if (val === '증빙' || val === '증빙 프리패스') return '프패';
-  if (val === '교환/나눔') return '교환'; // 이전 버전 호환성
+  if (val === '교환/나눔') return '교환'; // 호환성
   return val || '-';
 }
 
@@ -566,7 +567,6 @@ function renderRecords() {
 
   let sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   
-  // '교환'만 숨김 처리 ('나눔'은 실관람이므로 유지)
   if (hideExchange) {
     sorted = sorted.filter(r => r.discount !== '교환' && r.discount !== '교환/나눔');
   }
@@ -603,31 +603,35 @@ function renderRecords() {
 
     const dispDisc = formatDiscount(r.discount);
     
-    // '교환'인 경우에만 옅게 반투명 처리 ('나눔' 제외)
+    // 교환 표의 내용물(div)만 투명도를 주어 표 외곽선은 유지
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
-    const rowStyle = isExchange ? 'opacity: 0.4;' : '';
+    const dimCls = isExchange ? 'opacity: 0.3;' : '';
 
-    let rowHtml = `<tr class="hover-row" style="${rowStyle}">
-      <td class="st-date" onclick="openDetailModal('${r.id}')" style="cursor:pointer; text-decoration:underline; text-underline-offset:2px; color:var(--red4); opacity:1;">${r.date.substring(5).replace('-','.')}</td>
-      <td class="st-time">${r.time}</td>
-      <td class="st-cast" style="font-weight:600; color:var(--red3);" title="${castStr}">${castStr}</td>
-      <td style="font-size:10px;">${dispDisc}</td>
-      <td style="font-size:10px;">${seatStr}</td>`;
+    let rowHtml = `<tr class="hover-row">
+      <td class="st-date" onclick="openDetailModal('${r.id}')" style="cursor:pointer; text-decoration:underline; text-underline-offset:2px; color:var(--txt);">
+        <div style="${dimCls}">${r.date.substring(5).replace('-','.')}</div>
+      </td>
+      <td class="st-time"><div style="${dimCls}">${r.time}</div></td>
+      <td class="st-cast" style="font-weight:600; color:var(--red3);" title="${castStr}"><div style="${dimCls}">${castStr}</div></td>
+      <td style="font-size:10px;"><div style="${dimCls}">${dispDisc}</div></td>
+      <td style="font-size:10px;"><div style="${dimCls}">${seatStr}</div></td>`;
     
     state.boards.forEach(b => {
       const stamped = r.boards && r.boards[b.id] ? r.boards[b.id] : 0;
       if (stamped > 0) {
         const icon = r._isMilestone[b.id] ? '🎁' : '';
-        rowHtml += `<td style="color:var(--red); line-height:1.4; font-weight:700;">${stamped}<br><span style="font-size:10px; color:var(--txt3); font-weight:400;">(${r._cum[b.id]}${icon})</span></td>`;
+        rowHtml += `<td style="color:var(--red); line-height:1.4; font-weight:700;"><div style="${dimCls}">${stamped}<br><span style="font-size:10px; color:var(--txt3); font-weight:400;">(${r._cum[b.id]}${icon})</span></div></td>`;
       } else {
-        rowHtml += `<td style="color:var(--txt4)">-</td>`;
+        rowHtml += `<td style="color:var(--txt4)"><div style="${dimCls}">-</div></td>`;
       }
     });
 
     rowHtml += `
       <td onclick="event.stopPropagation();">
-        <button class="btn sm" onclick="editRecord('${r.id}')" style="padding:2px 4px;">✎</button>
-        <button class="btn sm" onclick="deleteRecord('${r.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
+        <div style="${dimCls} display:flex; gap:4px; justify-content:center;">
+          <button class="btn sm" onclick="editRecord('${r.id}')" style="padding:2px 4px;">✎</button>
+          <button class="btn sm" onclick="deleteRecord('${r.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
+        </div>
       </td></tr>`;
     return rowHtml;
   }).join('');
@@ -698,14 +702,19 @@ function onTimeChange() {
   }
 }
 
-function renderBoardCheckboxesInModal() {
-  const checked = document.querySelector('input[name="rm-board-radio"]:checked')?.value;
-  document.getElementById('rm-boards').innerHTML = state.boards.map((b, idx) => {
-    const isChecked = checked ? (checked === b.id) : false;
+function renderBoardCheckboxesInModal(selectedId = "") {
+  // 선택 안 함 옵션 추가 (selectedId가 비어있으면 체크)
+  let html = `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+    <input type="radio" name="rm-board-radio" value="" ${selectedId === "" ? 'checked' : ''}> 선택 안 함
+  </label>`;
+  
+  html += state.boards.map((b) => {
+    const isChecked = (selectedId === b.id);
     return `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
       <input type="radio" name="rm-board-radio" value="${b.id}" ${isChecked ? 'checked' : ''}> ${b.name}
     </label>`;
   }).join('');
+  document.getElementById('rm-boards').innerHTML = html;
 }
 
 function addBoardFromModal() {
@@ -716,8 +725,7 @@ function addBoardFromModal() {
   saveState();
   document.getElementById('rm-new-board-name').value = '';
   
-  document.getElementById('rm-boards').innerHTML += `<label style="display:none;"><input type="radio" name="rm-board-radio" value="${newId}" checked></label>`;
-  renderBoardCheckboxesInModal(); 
+  renderBoardCheckboxesInModal(newId); 
   renderRecords(); 
 }
 
@@ -735,7 +743,7 @@ function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-memo').value = "";
 
   selectMult(1); 
-  renderBoardCheckboxesInModal(); 
+  renderBoardCheckboxesInModal(""); // 새로 추가 시 기본은 '선택 안 함'
 
   openModal('modal-record');
 }
@@ -745,8 +753,9 @@ function saveRecord() {
   const boardsData = {};
   
   const mult = parseInt(document.querySelector('input[name="rm-mult"]:checked').value) || 1;
-  const selectedBoard = document.querySelector('input[name="rm-board-radio"]:checked');
-  if(selectedBoard) { boardsData[selectedBoard.value] = mult; }
+  const selectedBoard = document.querySelector('input[name="rm-board-radio"]:checked')?.value;
+  
+  if(selectedBoard) { boardsData[selectedBoard] = mult; }
 
   const record = {
     id: id,
@@ -796,7 +805,7 @@ function editRecord(id) {
   document.getElementById('rm-memo').value = r.memo || "";
 
   let assumedMult = 1;
-  let selectedId = null;
+  let selectedId = "";
   if (r.boards) {
     const keys = Object.keys(r.boards);
     if (keys.length > 0) {
@@ -807,8 +816,7 @@ function editRecord(id) {
   if ([1,2,3].includes(assumedMult)) selectMult(assumedMult);
   else selectMult(1);
 
-  document.getElementById('rm-boards').innerHTML = `<label style="display:none;"><input type="radio" name="rm-board-radio" value="${selectedId}" checked></label>`;
-  renderBoardCheckboxesInModal(); 
+  renderBoardCheckboxesInModal(selectedId); 
 }
 
 function deleteRecord(id) {
@@ -1048,7 +1056,7 @@ function calculateWalletBalance() {
   });
   
   state.records.forEach(r => {
-    // 실관람(나눔 포함)이면 재관람 할인표 1개 자동 획득 ('교환'만 제외)
+    // 실관람이면 재관람 할인표 1개 자동 획득 ('교환'만 제외)
     if (r.discount !== '교환' && r.discount !== '교환/나눔') {
       balances['re'] += 1;
     }
@@ -1082,7 +1090,7 @@ function renderCoupons() {
   state.wallet.forEach(w => combinedWallet.push({...w, isAuto: false}));
   
   state.records.forEach(r => {
-    // '교환' 표는 지갑 변동사항에 전혀 표시되지 않음 ('나눔'은 표시됨)
+    // '교환' 표는 지갑 변동사항에 전혀 표시되지 않음
     if (r.discount === '교환' || r.discount === '교환/나눔') return;
 
     const dateParts = r.date.split('-');
@@ -1120,7 +1128,6 @@ function renderCoupons() {
   });
 
   // 오래된 순서대로 정렬 (과거 -> 현재)
-  // 날짜 오름차순 -> 시간 오름차순 -> 사용/획득 순서(order)
   combinedWallet.sort((a,b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date); 
     const timeA = a.time || "";
@@ -1317,8 +1324,8 @@ function renderStats() {
   let grouped = {};
 
   state.records.forEach(r => {
-    // '교환'과 '나눔' 모두 정산에서 제외
-    if (r.discount === '교환' || r.discount === '교환/나눔' || r.discount === '나눔') return;
+    // 통계(정산)에서는 교환 표는 제외됨
+    if (r.discount === '교환' || r.discount === '교환/나눔') return;
     
     let k = r.date + '_' + r.time;
     if (!grouped[k]) grouped[k] = [];
@@ -1403,20 +1410,37 @@ function renderStats() {
   document.getElementById('heatmap-container').innerHTML = hmHtml;
 
   // --- 추가된 관극 회차 렌더링 ---
-  // validRecords를 날짜/시간 순으로 정렬
   let sortedSessions = [...validRecords].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  
+  const getEventName = (d) => {
+    const evs = state.events.filter(e => d >= e.startDate && d <= e.endDate);
+    return evs.map(e => e.name).join(', ') || '-';
+  };
   
   let sessionsHtml = sortedSessions.map(r => {
     const castStr = `${r.cast1||'-'}·${r.cast2||'-'}`;
-    const shortDate = r.date.substring(5).replace('-', '.'); // e.g., 04.28
+    const shortDate = r.date.substring(5).replace('-', '.'); 
+    
+    // 관극 회차 배너에서는 좌석을 상세 형태로 표시
+    let longSeatStr = '-';
+    if (r.seatZone) {
+      longSeatStr = `${r.seatZone}구역`;
+      if (r.seatRow != null && r.seatRow !== "") longSeatStr += ` ${r.seatRow}열`;
+      if (r.seatNum != null && r.seatNum !== "") longSeatStr += ` ${r.seatNum}번`;
+    }
+    
+    const evName = getEventName(r.date);
+    
     return `<tr>
-      <td style="font-weight:600;">${shortDate}</td>
+      <td onclick="openDetailModal('${r.id}')" style="cursor:pointer; text-decoration:underline; text-underline-offset:2px; color:var(--txt); font-weight:600;">${shortDate}</td>
       <td>${r.time}</td>
       <td style="color:var(--red3); font-weight:600;">${castStr}</td>
+      <td style="font-size:11px;">${longSeatStr}</td>
+      <td style="font-size:11px; color:var(--grn); font-weight:600; white-space:normal; line-height:1.2;">${evName}</td>
     </tr>`;
   }).join('');
   
-  if(!sessionsHtml) sessionsHtml = `<tr><td colspan="3" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
+  if(!sessionsHtml) sessionsHtml = `<tr><td colspan="5" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
   document.getElementById('stats-sessions-body').innerHTML = sessionsHtml;
 }
 
