@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>관극 다이어리</title>
+
+<style>
+/* --- 설정된 테마 (기존 디자인 유지) --- */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap');
+
+:root {
+  --bg:#071120; --bg2:#0d1b33; --bg3:#152745; --bg4:#1e3559;
+  --brd:#2a4066; --brd2:#3c5685;
+  --txt:#ffffff; --txt2:#e0e7f1; --txt3:#aab7cc; --txt4:#7b8ba6; --dim:#576885;
+  --red:#00e5ff; --red2:#00b8cc; --red3:#66eeff; --red4:#00e5ff; /* 기존 시안색 포인트 */
+  --grn:#ffcc00; --grn2:#ffdb4d; /* 기존 노란색 포인트 */
+  --blu:#5c8aff; --blu2:#8fb1ff;
+  --ylw:#e2e8f0; --ylw2:#ffffff;
+  --seat1:#1a3570; --seat2:#1e52a0; --seat3:#2e70cc; --seat4:#4490e0; --seat5:#6ab0ff;
+  --tab-h: 60px;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--txt); font-family:'Pretendard', sans-serif; font-size:14px; overflow-x:hidden; }
+#app { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); }
+
+/* TAB BAR */
+.tab-bar {
+  position:fixed; bottom:0; left:0; width:100%;
+  height:calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+  background:var(--bg2); border-top:1px solid var(--brd);
+  display:flex; z-index:100;
+}
+.tab-btn {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  background:none; border:none; cursor:pointer; color:var(--txt4); font-size:10px; transition:color 0.2s;
+}
+.tab-btn.active { color:var(--red); }
+.tab-btn .icon { font-size:20px; }
+
+/* PAGES & COMMON */
+.page { display:none; padding:16px; animation: fadeIn 0.2s ease; }
+.page.active { display:block; }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+.page-title { font-family:'IBM Plex Sans KR', sans-serif; font-size:22px; font-weight:700; color:var(--txt); margin-bottom:16px; text-shadow:0 0 12px rgba(0,229,255,.3); }
+.card { background:var(--bg2); border:1px solid var(--brd); border-radius:12px; padding:16px; margin-bottom:16px; }
+.card-title { font-size:13px; color:var(--txt2); margin-bottom:12px; font-weight:600; letter-spacing:0.05em; }
+
+/* BUTTONS */
+.btn { background:transparent; border:1px solid var(--brd2); color:var(--txt2); padding:8px 14px; cursor:pointer; font-family:inherit; font-size:13px; border-radius:6px; transition:all 0.2s; }
+.btn:active { border-color:var(--red3); color:var(--red3); }
+.btn.prim { background:var(--red); border-color:var(--red); color:#000; font-weight:700; }
+.btn.prim:active { background:var(--red2); border-color:var(--red2); }
+.btn.sm { padding:4px 10px; font-size:11px; }
+.btn.grn { background:var(--grn); border-color:var(--grn); color:#000; font-weight:700; }
+.flex-between { display:flex; justify-content:space-between; align-items:center; }
+
+/* TABLE (관극 기록) - Sticky Columns 적용 */
+.twrap { overflow-x:auto; margin:0 -16px; padding:0 16px; }
+table.record-tb { width:100%; border-collapse:separate; border-spacing:0; border:1px solid var(--brd); }
+.record-tb th, .record-tb td { padding:8px 6px; border-bottom:1px solid var(--brd); border-right:1px solid var(--brd); text-align:center; white-space:nowrap; font-size:12px; }
+.record-tb thead th { background:var(--bg4); position:sticky; top:0; z-index:21; font-size:10px; color:var(--txt3); }
+/* 고정 열 1: 날짜, 고정 열 2: 캐스트 */
+.record-tb th:nth-child(1), .record-tb td:nth-child(1) { position:sticky; left:0; z-index:20; background:var(--bg4); }
+.record-tb th:nth-child(2), .record-tb td:nth-child(2) { position:sticky; left:70px; z-index:20; background:var(--bg4); border-right:2px solid var(--red); }
+.record-tb td:nth-child(1), .record-tb td:nth-child(2) { background:var(--bg2); }
+.record-tb thead th:nth-child(1), .record-tb thead th:nth-child(2) { z-index:22; }
+
+/* FORMS & MODALS */
+.finput, .fselect { width:100%; background:var(--bg3); border:1px solid var(--brd2); color:var(--txt); padding:10px 12px; font-family:inherit; font-size:13px; border-radius:6px; outline:none; color-scheme:dark; }
+.finput:focus, .fselect:focus { border-color:var(--red); }
+.fg { margin-bottom:12px; }
+.flbl { display:block; font-size:11px; color:var(--txt3); margin-bottom:5px; }
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:200; justify-content:center; align-items:flex-end; }
+.overlay.show { display:flex; }
+.modal { background:var(--bg2); border-top:2px solid var(--red); width:100%; max-width:520px; max-height:90vh; overflow-y:auto; padding:20px; border-radius:16px 16px 0 0; animation:slideUp 0.3s ease; }
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+
+/* CALENDAR */
+.cal-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
+.cal-dow { text-align:center; font-size:10px; color:var(--txt3); padding:4px 0; }
+.cal-day { min-height:50px; background:var(--bg3); border-radius:4px; padding:4px; cursor:pointer; position:relative; overflow:hidden; border:1px solid transparent; }
+.cal-day.today { border-color:var(--grn); }
+.cal-day.sun { color:var(--red3); }
+.cal-day-num { font-size:11px; font-weight:700; display:block; margin-bottom:2px; }
+.cs-chip { font-size:9px; background:var(--bg4); color:var(--txt2); padding:2px; margin-top:2px; border-radius:2px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cs-chip.booked { background:rgba(0,229,255,0.15); color:var(--red); border:1px solid var(--red); }
+
+/* WALLET & STAMPS */
+.wallet-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:16px; }
+.wcard { background:var(--bg3); border:1px solid var(--brd2); border-radius:8px; text-align:center; padding:10px 4px; }
+.wcard-num { font-size:20px; font-weight:700; color:var(--grn); font-family:'IBM Plex Sans KR'; margin:4px 0; }
+.collapsible-content { display:none; margin-top:12px; border-top:1px dashed var(--brd2); padding-top:12px; }
+.collapsible-content.open { display:block; }
+
+/* HEATMAP */
+.heatmap-wrap { display:flex; gap:10px; justify-content:center; overflow-x:auto; padding-bottom:10px; }
+.zone-col { display:flex; flex-direction:column; gap:2px; align-items:center; }
+.seat-row { display:flex; gap:2px; align-items:center; }
+.seat-cell { width:12px; height:12px; background:var(--bg4); border-radius:2px; }
+.seat-cell.v1 { background:var(--seat1); } .seat-cell.v2 { background:var(--seat2); }
+.seat-cell.v3 { background:var(--seat3); } .seat-cell.v4 { background:var(--seat4); }
+.seat-cell.v5 { background:var(--seat5); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="page active" id="page-record">
+    <div class="flex-between" style="margin-bottom:16px;">
+      <div class="page-title" id="app-title-display">관극 기록</div>
+      <button class="btn prim sm" onclick="openRecordModal()">+ 추가</button>
+    </div>
+    
+    <div class="twrap">
+      <table class="record-tb">
+        <thead id="record-thead">
+          </thead>
+        <tbody id="record-tbody">
+          </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="page" id="page-calendar">
+    <div class="page-title">스케줄 달력</div>
+    
+    <div class="card" style="padding:12px;">
+      <div style="font-size:11px; color:var(--txt3); margin-bottom:10px;">
+        <span id="cal-filter-display">캐스트 필터: 전체</span>
+        <button class="btn sm" style="float:right; padding:2px 6px;" onclick="changeCastFilter()">필터 변경</button>
+      </div>
+      <div class="cal-nav">
+        <button class="btn sm" onclick="changeMonth(-1)">‹</button>
+        <div id="cal-month-title" style="font-weight:700; font-size:16px;">2026.04</div>
+        <button class="btn sm" onclick="changeMonth(1)">›</button>
+      </div>
+      <div id="cal-grid-container"></div>
+    </div>
+    <div id="cal-detail-panel" style="margin-top:16px;"></div>
+  </div>
+
+  <div class="page" id="page-coupon">
+    <div class="page-title">할인권 및 도장판</div>
+    
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:12px;">
+        <div class="card-title" style="margin:0;">지갑 현황</div>
+        <button class="btn grn sm" onclick="openWalletModal()">+ 추가/차감</button>
+      </div>
+      <div class="wallet-grid" id="wallet-cards"></div>
+      
+      <div class="card-title" style="cursor:pointer; color:var(--txt3);" onclick="toggleCollapsible('wallet-history')">
+        ▶ 할인권 상세 기록 (접기/펴기)
+      </div>
+      <div id="wallet-history" class="collapsible-content">
+        <table class="record-tb" style="width:100%; font-size:11px;">
+          <thead><tr><th>날짜</th><th>유형</th><th>내역</th><th>메모</th><th>관리</th></tr></thead>
+          <tbody id="wallet-history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:12px;">
+        <div class="card-title" style="margin:0;">도장판 현황</div>
+        <button class="btn sm" onclick="addBoard()">+ 도장판 추가</button>
+      </div>
+      <div id="board-status-container"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-stats">
+    <div class="page-title">정산 통계</div>
+    
+    <div class="card">
+      <div class="card-title">배우별 관람 횟수</div>
+      <table class="record-tb" style="width:100%;" id="stats-actors"></table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">좌석 히트맵</div>
+      <div class="heatmap-wrap" id="heatmap-container"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-settings">
+    <div class="page-title">설정</div>
+    <div class="card">
+      <div class="card-title">데이터 동기화</div>
+      <div class="flex-between" style="margin-bottom:12px; border-bottom:1px solid var(--brd2); padding-bottom:8px;">
+        <div>
+          <div style="font-size:13px;">스케줄 업데이트</div>
+          <div id="set-sch-time" style="font-size:10px; color:var(--txt4);">확인 중...</div>
+        </div>
+        <button class="btn sm" onclick="alert('스케줄을 업데이트합니다.')">새로고침</button>
+      </div>
+      <div class="flex-between">
+        <div>
+          <div style="font-size:13px;">이벤트 업데이트</div>
+          <div id="set-evt-time" style="font-size:10px; color:var(--txt4);">확인 중...</div>
+        </div>
+        <button class="btn sm" onclick="alert('이벤트를 업데이트합니다.')">새로고침</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">백업 및 복원</div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" style="flex:1;" onclick="exportData()">JSON 백업</button>
+        <button class="btn" style="flex:1;" onclick="document.getElementById('import-file').click()">복원하기</button>
+        <input type="file" id="import-file" style="display:none" accept=".json" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('record', this)"><span class="icon">📝</span>기록</button>
+  <button class="tab-btn" onclick="switchTab('calendar', this)"><span class="icon">📅</span>달력</button>
+  <button class="tab-btn" onclick="switchTab('coupon', this)"><span class="icon">🎫</span>도장·할인</button>
+  <button class="tab-btn" onclick="switchTab('stats', this)"><span class="icon">📊</span>정산</button>
+  <button class="tab-btn" onclick="switchTab('settings', this)"><span class="icon">⚙️</span>설정</button>
+</nav>
+
+<div class="overlay" id="modal-record">
+  <div class="modal">
+    <div class="page-title" id="rm-title" style="font-size:18px;">회차 기록</div>
+    <input type="hidden" id="rm-id">
+    
+    <div style="display:flex; gap:10px;">
+      <div class="fg" style="flex:1;">
+        <label class="flbl">날짜</label>
+        <input type="date" id="rm-date" class="finput">
+      </div>
+      <div class="fg" style="width:80px;">
+        <label class="flbl">시간</label>
+        <select id="rm-time" class="fselect">
+          <option value="낮">낮</option><option value="밤">밤</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px;" id="rm-cast-container">
+      </div>
+
+    <div class="fg">
+      <label class="flbl">할인 권종</label>
+      <select id="rm-disc" class="fselect"></select>
+    </div>
+
+    <div class="fg">
+      <label class="flbl">좌석 정보 (구역 / 열 / 번호)</label>
+      <div style="display:flex; gap:10px;">
+        <select id="rm-zone" class="fselect" style="flex:1;"><option value="">-</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select>
+        <input type="number" id="rm-row" class="finput" style="flex:1;" placeholder="열">
+        <input type="number" id="rm-num" class="finput" style="flex:1;" placeholder="번호">
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="flbl">도장 적립 (도장판 선택 / 체크시 1개 증가)</label>
+      <div id="rm-boards" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+    </div>
+
+    <div class="fg">
+      <label class="flbl">메모</label>
+      <input type="text" id="rm-memo" class="finput" placeholder="메모를 입력하세요">
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn" style="flex:1;" onclick="closeModal('modal-record')">취소</button>
+      <button class="btn prim" style="flex:1;" onclick="saveRecord()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-wallet">
+  <div class="modal">
+    <div class="page-title" id="wm-title" style="font-size:18px;">할인권 내역</div>
+    <input type="hidden" id="wm-id">
+    
+    <div class="fg">
+      <label class="flbl">날짜</label>
+      <input type="date" id="wm-date" class="finput">
+    </div>
+    <div class="fg">
+      <label class="flbl">유형</label>
+      <select id="wm-type" class="fselect">
+        <option value="add">획득(+)</option>
+        <option value="sub">사용/차감(-)</option>
+      </select>
+    </div>
+    
+    <div id="wm-coupon-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      </div>
+
+    <div class="fg">
+      <label class="flbl">메모</label>
+      <input type="text" id="wm-memo" class="finput">
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn" style="flex:1;" onclick="closeModal('modal-wallet')">취소</button>
+      <button class="btn grn" style="flex:1;" onclick="saveWallet()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 1. EXTENSIBILITY CONFIGURATION (확장성을 위한 통합 설정)
+// ============================================================
+const CONFIG = {
+  SHOW_NAME: "라져",
+  STORAGE_KEY: "musical_tracker_v3",
+  
+  // 배역 설정 (캘린더 및 폼에 자동 반영)
+  ROLES: [
+    { id: "cast1", label: "스카일러", actors: ["주민진", "고상호", "기세중"] },
+    { id: "cast2", label: "디디", actors: ["정휘", "이한솔", "박주혁"] }
+  ],
+  
+  // 할인 권종 (지갑 연동 로직 포함)
+  DISCOUNTS: [
+    { label: "없음", value: "" },
+    { label: "프리뷰", value: "프리뷰" },
+    { label: "재관할", value: "재관할", useWallet: "re" }, // 지갑 차감 키
+    { label: "창작산실할", value: "창작산실할", useWallet: "arko" },
+    { label: "40% 할인권", value: "40%", useWallet: "d40" },
+    { label: "50% 할인권", value: "50%", useWallet: "d50" },
+    { label: "증빙 프리패스", value: "증빙", useWallet: "cert" }
+  ],
+  
+  // 지갑 (쿠폰) 필드 정의
+  WALLET_FIELDS: [
+    { id: "re", label: "재관람 할인표" },
+    { id: "arko", label: "창작산실표" },
+    { id: "d40", label: "40% 할인권" },
+    { id: "d50", label: "50% 할인권" },
+    { id: "cert", label: "증빙 프리패스" }
+  ],
+
+  // 도장판 마일스톤
+  STAMP_MILESTONES: [3, 7]
+};
+
+// ============================================================
+// 2. STATE MANAGEMENT
+// ============================================================
+let state = {
+  records: [], // { id, date, time, cast1, cast2, discount, seatZone, seatRow, seatNum, boards: { b1: 1 }, memo }
+  boards: [{ id: "b1", name: "1", initial: 0, active: true }],
+  wallet: []   // { id, date, type(add/sub), items: { re: 1, d50: 0 }, memo }
+};
+
+function loadState() {
+  const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+  if(saved) state = JSON.parse(saved);
+  // Title update
+  document.getElementById('app-title-display').textContent = `✈ ${CONFIG.SHOW_NAME} 기록`;
+}
+function saveState() {
+  localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state));
+}
+function uuid() { return Math.random().toString(36).substr(2, 9); }
+function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+// ============================================================
+// 3. UI NAVIGATION & UTILS
+// ============================================================
+function switchTab(tabId, btnEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tabId).classList.add('active');
+  btnEl.classList.add('active');
+  
+  if(tabId === 'record') renderRecords();
+  if(tabId === 'calendar') renderCalendar();
+  if(tabId === 'coupon') renderCoupons();
+  if(tabId === 'stats') renderStats();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function toggleCollapsible(id) { document.getElementById(id).classList.toggle('open'); }
+
+// ============================================================
+// 4. TAB 1: RECORD (관극 기록) - Sticky Columns & Cast
+// ============================================================
+function renderRecords() {
+  // 1. 헤더 생성
+  let thHtml = `<tr>
+    <th style="min-width:70px;">날짜</th>
+    <th style="min-width:90px;">캐스트</th>
+    <th>시간</th><th>할인</th>`;
+  state.boards.forEach(b => {
+    thHtml += `<th style="color:var(--txt3); font-size:10px;">${b.name}</th>`;
+  });
+  thHtml += `<th>좌석</th><th>관리</th></tr>`;
+  document.getElementById('record-thead').innerHTML = thHtml;
+
+  // 2. 바디 생성 (날짜순 정렬)
+  const sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  let tbHtml = sorted.map(r => {
+    const castStr = `${r.cast1[0]}·${r.cast2[0]}`; // 첫 글자만 표시 (공간 절약)
+    const seatStr = r.seatZone ? `${r.seatZone}-${r.seatRow}` : '-';
+    let rowHtml = `<tr>
+      <td>${r.date.substring(5)}</td>
+      <td style="font-weight:600; color:var(--red3);">${castStr}</td>
+      <td>${r.time}</td>
+      <td style="font-size:10px;">${r.discount || '-'}</td>`;
+    
+    state.boards.forEach(b => {
+      const stamped = r.boards && r.boards[b.id] ? r.boards[b.id] : 0;
+      rowHtml += `<td style="color:${stamped ? 'var(--red)' : 'var(--txt4)'}">${stamped || '-'}</td>`;
+    });
+
+    rowHtml += `
+      <td style="font-size:10px;">${seatStr}</td>
+      <td>
+        <button class="btn sm" onclick="editRecord('${r.id}')" style="padding:2px 4px;">✎</button>
+        <button class="btn sm" onclick="deleteRecord('${r.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
+      </td>
+    </tr>`;
+    return rowHtml;
+  }).join('');
+  
+  if(!tbHtml) tbHtml = `<tr><td colspan="${6+state.boards.length}" style="padding:40px 0; color:var(--txt4);">기록이 없습니다</td></tr>`;
+  document.getElementById('record-tbody').innerHTML = tbHtml;
+}
+
+// 폼 초기화 로직
+function initRecordForm() {
+  // 캐스트 드롭다운 렌더링
+  document.getElementById('rm-cast-container').innerHTML = CONFIG.ROLES.map((role, idx) => `
+    <div class="fg" style="flex:1;">
+      <label class="flbl">${role.label}</label>
+      <select id="rm-cast${idx+1}" class="fselect">
+        <option value="">선택</option>
+        ${role.actors.map(a => `<option value="${a}">${a}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+
+  // 할인 드롭다운 렌더링
+  document.getElementById('rm-disc').innerHTML = CONFIG.DISCOUNTS.map(d => 
+    `<option value="${d.value}">${d.label}</option>`
+  ).join('');
+}
+
+function openRecordModal(date = '') {
+  document.getElementById('rm-title').textContent = "회차 기록 추가";
+  document.getElementById('rm-id').value = "";
+  document.getElementById('rm-date').value = date || todayStr();
+  document.getElementById('rm-time').value = "낮";
+  document.getElementById('rm-cast1').value = "";
+  document.getElementById('rm-cast2').value = "";
+  document.getElementById('rm-disc').value = "";
+  document.getElementById('rm-zone').value = "";
+  document.getElementById('rm-row').value = "";
+  document.getElementById('rm-num').value = "";
+  document.getElementById('rm-memo').value = "";
+
+  // 도장판 체크박스
+  document.getElementById('rm-boards').innerHTML = state.boards.map(b => 
+    `<label style="padding:4px 8px; border:1px solid var(--brd2); border-radius:4px; font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+      <input type="checkbox" class="rm-board-chk" value="${b.id}"> ${b.name}
+    </label>`
+  ).join('');
+
+  openModal('modal-record');
+}
+
+function saveRecord() {
+  const id = document.getElementById('rm-id').value || uuid();
+  const boardsData = {};
+  document.querySelectorAll('.rm-board-chk:checked').forEach(chk => {
+    boardsData[chk.value] = 1; // 기본 1개 적립
+  });
+
+  const record = {
+    id: id,
+    date: document.getElementById('rm-date').value,
+    time: document.getElementById('rm-time').value,
+    cast1: document.getElementById('rm-cast1').value,
+    cast2: document.getElementById('rm-cast2').value,
+    discount: document.getElementById('rm-disc').value,
+    seatZone: document.getElementById('rm-zone').value,
+    seatRow: document.getElementById('rm-row').value,
+    seatNum: document.getElementById('rm-num').value,
+    boards: boardsData,
+    memo: document.getElementById('rm-memo').value
+  };
+
+  const existingIdx = state.records.findIndex(r => r.id === id);
+  if(existingIdx >= 0) state.records[existingIdx] = record;
+  else state.records.push(record);
+
+  saveState();
+  closeModal('modal-record');
+  renderRecords();
+  renderCoupons(); // 지갑 변동 있을 수 있으므로
+}
+
+function editRecord(id) {
+  const r = state.records.find(x => x.id === id);
+  if(!r) return;
+  openRecordModal();
+  document.getElementById('rm-title').textContent = "회차 기록 수정";
+  document.getElementById('rm-id').value = r.id;
+  document.getElementById('rm-date').value = r.date;
+  document.getElementById('rm-time').value = r.time;
+  document.getElementById('rm-cast1').value = r.cast1;
+  document.getElementById('rm-cast2').value = r.cast2;
+  document.getElementById('rm-disc').value = r.discount;
+  document.getElementById('rm-zone').value = r.seatZone || "";
+  document.getElementById('rm-row').value = r.seatRow || "";
+  document.getElementById('rm-num').value = r.seatNum || "";
+  document.getElementById('rm-memo').value = r.memo || "";
+
+  document.querySelectorAll('.rm-board-chk').forEach(chk => {
+    chk.checked = r.boards && r.boards[chk.value] > 0;
+  });
+}
+
+function deleteRecord(id) {
+  if(confirm("기록을 삭제하시겠습니까?")) {
+    state.records = state.records.filter(r => r.id !== id);
+    saveState();
+    renderRecords();
+  }
+}
+
+// ============================================================
+// 5. TAB 2: CALENDAR (달력)
+// ============================================================
+let curYear = new Date().getFullYear();
+let curMonth = new Date().getMonth(); // 0-11
+let calFilter = null; // null or array of actors
+
+function changeMonth(diff) {
+  curMonth += diff;
+  if(curMonth > 11) { curMonth = 0; curYear++; }
+  if(curMonth < 0) { curMonth = 11; curYear--; }
+  renderCalendar();
+}
+
+function changeCastFilter() {
+  // 간단한 순환 필터 구현
+  const actors = [...CONFIG.ROLES[0].actors, ...CONFIG.ROLES[1].actors];
+  if(!calFilter) calFilter = actors[0];
+  else {
+    const idx = actors.indexOf(calFilter);
+    calFilter = idx < actors.length - 1 ? actors[idx+1] : null;
+  }
+  document.getElementById('cal-filter-display').textContent = `캐스트 필터: ${calFilter ? calFilter : '전체'}`;
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-title').textContent = `${curYear}.${String(curMonth+1).padStart(2,'0')}`;
+  
+  const firstDay = new Date(curYear, curMonth, 1).getDay();
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+  
+  const dow = ['일','월','화','수','목','금','토'];
+  let html = `<div class="cal-grid">`;
+  dow.forEach(d => html += `<div class="cal-dow">${d}</div>`);
+  
+  for(let i=0; i<firstDay; i++) html += `<div></div>`;
+  
+  for(let day=1; day<=daysInMonth; day++) {
+    const dateStr = `${curYear}-${String(curMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday = dateStr === todayStr();
+    const isSun = new Date(curYear, curMonth, day).getDay() === 0;
+    
+    // 필터링 적용된 레코드
+    const dayRecs = state.records.filter(r => {
+      if(r.date !== dateStr) return false;
+      if(calFilter && r.cast1 !== calFilter && r.cast2 !== calFilter) return false;
+      return true;
+    });
+
+    let chipsHtml = dayRecs.map(r => `
+      <div class="cs-chip booked">${r.time[0]} ${r.cast1[0]}·${r.cast2[0]}</div>
+    `).join('');
+
+    html += `
+      <div class="cal-day ${isToday ? 'today' : ''} ${isSun ? 'sun' : ''}" onclick="openRecordModal('${dateStr}')">
+        <span class="cal-day-num">${day}</span>
+        ${chipsHtml}
+      </div>
+    `;
+  }
+  html += `</div>`;
+  document.getElementById('cal-grid-container').innerHTML = html;
+}
+
+// ============================================================
+// 6. TAB 3: COUPON & STAMPS (도장, 할인권)
+// ============================================================
+function calculateWalletBalance() {
+  let balances = {};
+  CONFIG.WALLET_FIELDS.forEach(f => balances[f.id] = 0);
+
+  // 1. 수동 내역 가감
+  state.wallet.forEach(w => {
+    CONFIG.WALLET_FIELDS.forEach(f => {
+      if(w.items[f.id]) {
+        balances[f.id] += (w.type === 'add' ? w.items[f.id] : -w.items[f.id]);
+      }
+    });
+  });
+
+  // 2. 관극 기록에 의한 자동 차감
+  state.records.forEach(r => {
+    const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
+    if(discDef && discDef.useWallet) {
+      balances[discDef.useWallet] -= 1;
+    }
+  });
+
+  return balances;
+}
+
+function renderCoupons() {
+  const bals = calculateWalletBalance();
+  
+  // 지갑 현황 카드
+  document.getElementById('wallet-cards').innerHTML = CONFIG.WALLET_FIELDS.map(f => `
+    <div class="wcard">
+      <div style="font-size:10px; color:var(--txt3); margin-bottom:4px;">${f.label}</div>
+      <div class="wcard-num" style="color:${bals[f.id] < 0 ? 'var(--red3)' : 'var(--grn)'}">${bals[f.id]}</div>
+    </div>
+  `).join('');
+
+  // 지갑 상세 히스토리
+  const histTbody = document.getElementById('wallet-history-body');
+  if(state.wallet.length === 0) {
+    histTbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
+  } else {
+    histTbody.innerHTML = [...state.wallet].reverse().map(w => {
+      let itemsStr = [];
+      CONFIG.WALLET_FIELDS.forEach(f => {
+        if(w.items[f.id]) itemsStr.push(`${f.label} ${w.items[f.id]}`);
+      });
+      return `<tr>
+        <td>${w.date.substring(5)}</td>
+        <td style="color:${w.type==='add' ? 'var(--grn)' : 'var(--red3)'}">${w.type==='add'?'획득':'사용'}</td>
+        <td style="text-align:left;">${itemsStr.join(', ')}</td>
+        <td style="text-align:left; color:var(--txt4);">${w.memo}</td>
+        <td>
+          <button class="btn sm" onclick="editWallet('${w.id}')" style="padding:2px 4px;">✎</button>
+          <button class="btn sm" onclick="deleteWallet('${w.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  renderBoardStatus();
+}
+
+function initWalletForm() {
+  document.getElementById('wm-coupon-inputs').innerHTML = CONFIG.WALLET_FIELDS.map(f => `
+    <div style="background:var(--bg3); border:1px solid var(--brd2); padding:8px; border-radius:6px; text-align:center;">
+      <div style="font-size:10px; color:var(--txt3); margin-bottom:4px;">${f.label}</div>
+      <input type="number" id="wm-val-${f.id}" class="finput" style="text-align:center; padding:4px; font-weight:700;" value="0" min="0">
+    </div>
+  `).join('');
+}
+
+function openWalletModal() {
+  document.getElementById('wm-title').textContent = "할인권 추가/차감";
+  document.getElementById('wm-id').value = "";
+  document.getElementById('wm-date').value = todayStr();
+  document.getElementById('wm-type').value = "add";
+  document.getElementById('wm-memo').value = "";
+  CONFIG.WALLET_FIELDS.forEach(f => document.getElementById(`wm-val-${f.id}`).value = "0");
+  openModal('modal-wallet');
+}
+
+function saveWallet() {
+  const id = document.getElementById('wm-id').value || uuid();
+  let items = {};
+  let hasValue = false;
+  CONFIG.WALLET_FIELDS.forEach(f => {
+    const val = parseInt(document.getElementById(`wm-val-${f.id}`).value) || 0;
+    if(val > 0) { items[f.id] = val; hasValue = true; }
+  });
+
+  if(!hasValue) { alert("수량을 1개 이상 입력하세요."); return; }
+
+  const entry = {
+    id: id,
+    date: document.getElementById('wm-date').value,
+    type: document.getElementById('wm-type').value,
+    memo: document.getElementById('wm-memo').value,
+    items: items
+  };
+
+  const idx = state.wallet.findIndex(w => w.id === id);
+  if(idx >= 0) state.wallet[idx] = entry;
+  else state.wallet.push(entry);
+
+  saveState();
+  closeModal('modal-wallet');
+  renderCoupons();
+}
+
+function editWallet(id) {
+  const w = state.wallet.find(x => x.id === id);
+  if(!w) return;
+  document.getElementById('wm-title').textContent = "할인권 내역 수정";
+  document.getElementById('wm-id').value = w.id;
+  document.getElementById('wm-date').value = w.date;
+  document.getElementById('wm-type').value = w.type;
+  document.getElementById('wm-memo').value = w.memo;
+  CONFIG.WALLET_FIELDS.forEach(f => {
+    document.getElementById(`wm-val-${f.id}`).value = w.items[f.id] || 0;
+  });
+  openModal('modal-wallet');
+}
+
+function deleteWallet(id) {
+  if(confirm("기록을 삭제하시겠습니까?")) {
+    state.wallet = state.wallet.filter(w => w.id !== id);
+    saveState();
+    renderCoupons();
+  }
+}
+
+function renderBoardStatus() {
+  // 각 도장판별 누적 도장 수 계산
+  let boardCounts = {};
+  state.boards.forEach(b => boardCounts[b.id] = 0);
+  
+  state.records.forEach(r => {
+    if(r.boards) {
+      Object.keys(r.boards).forEach(bid => {
+        if(boardCounts[bid] !== undefined) boardCounts[bid] += r.boards[bid];
+      });
+    }
+  });
+
+  document.getElementById('board-status-container').innerHTML = state.boards.map(b => {
+    const cnt = boardCounts[b.id];
+    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cnt);
+    const pct = Math.min(100, Math.round(cnt/7*100)); // 7개 만기 기준
+    
+    return `<div style="background:var(--bg3); border:1px solid var(--brd2); padding:12px; border-radius:8px; margin-bottom:8px;">
+      <div class="flex-between" style="margin-bottom:8px;">
+        <span style="font-weight:600; font-size:13px;">[도장판] ${b.name}</span>
+        <span style="font-size:18px; font-family:'IBM Plex Sans KR'; color:var(--red); font-weight:700;">${cnt} <span style="font-size:12px; color:var(--txt3);">개</span></span>
+      </div>
+      <div style="font-size:10px; color:var(--txt3); margin-bottom:6px;">
+        ${nxt ? `다음 보상(${nxt}개)까지 ${nxt - cnt}개 남음` : `<span style="color:var(--grn);">✓ 최종 보상 달성 완료</span>`}
+      </div>
+      <div style="height:4px; background:var(--bg4); border-radius:2px; overflow:hidden;">
+        <div style="height:100%; width:${pct}%; background:var(--red3);"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addBoard() {
+  const name = prompt("새 도장판 이름을 입력하세요 (비우면 자동 번호)");
+  if(name === null) return;
+  const newName = name.trim() || String(state.boards.length + 1);
+  state.boards.push({ id: "b" + Date.now(), name: newName, initial: 0, active: true });
+  saveState();
+  renderCoupons();
+  renderRecords(); // 테이블 헤더 변경
+}
+
+// ============================================================
+// 7. TAB 4: STATS (정산 - 배우, 히트맵)
+// ============================================================
+function renderStats() {
+  // 1. 배우별 관람 횟수
+  let actorStatsHtml = `<tr><th style="text-align:left; color:var(--txt3);">배우</th><th style="color:var(--txt3);">배역</th><th style="color:var(--txt3);">관람</th></tr>`;
+  
+  CONFIG.ROLES.forEach((role, idx) => {
+    const castKey = `cast${idx+1}`;
+    role.actors.forEach(actor => {
+      const cnt = state.records.filter(r => r[castKey] === actor).length;
+      actorStatsHtml += `<tr>
+        <td style="text-align:left; font-weight:600;">${actor}</td>
+        <td style="font-size:10px; color:var(--txt4);">${role.label}</td>
+        <td style="color:var(--red3); font-weight:700;">${cnt}</td>
+      </tr>`;
+    });
+  });
+  document.getElementById('stats-actors').innerHTML = actorStatsHtml;
+
+  // 2. 좌석 히트맵
+  let seatMap = {};
+  state.records.forEach(r => {
+    if(r.seatZone && r.seatRow && r.seatNum) {
+      const k = `${r.seatZone}-${r.seatRow}-${r.seatNum}`;
+      seatMap[k] = (seatMap[k] || 0) + 1;
+    }
+  });
+
+  const getHeatClass = (cnt) => {
+    if(cnt >= 5) return 'v5';
+    if(cnt >= 4) return 'v4';
+    if(cnt >= 3) return 'v3';
+    if(cnt >= 2) return 'v2';
+    if(cnt >= 1) return 'v1';
+    return '';
+  };
+
+  const zones = ['A', 'B', 'C'];
+  let hmHtml = '';
+  zones.forEach(z => {
+    let zHtml = `<div class="zone-col"><div style="font-size:10px; font-weight:700; color:var(--txt3); margin-bottom:4px;">${z}구역</div>`;
+    for(let r=1; r<=13; r++) {
+      zHtml += `<div class="seat-row"><div style="font-size:8px; width:16px; text-align:right; color:var(--txt4); margin-right:2px;">${r}열</div>`;
+      const cols = z === 'B' ? 13 : 4; // 임의 좌석 배열 수
+      for(let c=1; c<=cols; c++) {
+        const k = `${z}-${r}-${c}`;
+        const cnt = seatMap[k] || 0;
+        zHtml += `<div class="seat-cell ${getHeatClass(cnt)}" title="${z}구역 ${r}열 ${c}번: ${cnt}회"></div>`;
+      }
+      zHtml += `</div>`;
+    }
+    hmHtml += zHtml + `</div>`;
+  });
+
+  document.getElementById('heatmap-container').innerHTML = hmHtml;
+}
+
+// ============================================================
+// 8. TAB 5: SETTINGS & BACKUP
+// ============================================================
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${CONFIG.SHOW_NAME}_백업_${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if(data.records && data.boards) {
+        if(confirm("현재 데이터를 덮어쓰시겠습니까?")) {
+          state = data;
+          saveState();
+          location.reload();
+        }
+      } else { alert("올바른 백업 파일이 아닙니다."); }
+    } catch(err) { alert("파일 읽기 오류"); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = () => {
+  initRecordForm();
+  initWalletForm();
+  loadState();
+  switchTab('record', document.querySelector('.tab-btn')); // Start on Tab 1
+};
+</script>
+
+</body>
+</html>
