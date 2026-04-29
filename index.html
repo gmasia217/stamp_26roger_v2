@@ -271,7 +271,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     <div class="page-title">정산 통계</div>
     <div class="card">
       <div class="card-title">배우별 관람 횟수</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 표 제외, 동일 시각 기록은 좌석 있는 표 1개만 산정</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 표 제외, 동일 시각 기록은 좌석 있는 표 1개만 산정 (좌석 없는 회차는 통계 제외)</div>
       <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);" id="stats-actors"></table>
     </div>
     
@@ -1145,9 +1145,9 @@ function renderCoupons() {
   const bals = calculateWalletBalances();
   
   const getColor = (val) => {
-    if(val > 0) return 'var(--grn)'; // 양수 노란색
-    if(val < 0) return 'var(--red3)'; // 음수 하늘색
-    return 'var(--txt3)'; // 0은 회색
+    if(val > 0) return 'var(--grn)';
+    if(val < 0) return 'var(--red3)'; 
+    return 'var(--txt3)'; 
   };
 
   document.getElementById('wallet-cards').innerHTML = CONFIG.WALLET_FIELDS.map(f => {
