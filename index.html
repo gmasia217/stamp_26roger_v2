@@ -183,30 +183,32 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-.cd-disk {
-  width: 56px; height: 56px;
+.cd-record {
+  width: 65px; height: 65px;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, #2a2a2a, #888, #e0e0e0, #888, #2a2a2a);
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 0 2px rgba(255,255,255,0.5);
+  background: conic-gradient(#111, #3a3a3a, #111, #3a3a3a, #111);
   position: relative;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6), inset 0 0 2px rgba(255,255,255,0.4);
+  animation: cd-spin 4s linear infinite;
   flex-shrink: 0;
-  animation: cd-spin 5s linear infinite;
 }
-.cd-disk::before {
+.cd-record::before {
   content: '';
   position: absolute;
   inset: 4px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.1);
 }
-.cd-disk::after {
+.cd-record::after {
   content: '';
-  width: 14px; height: 14px;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px; height: 16px;
   background: var(--bg2);
   border-radius: 50%;
-  border: 2px solid #999;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+  border: 2px solid #555;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
 }
 </style>
 </head>
@@ -291,8 +293,8 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
       <div id="board-status-container" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
     </div>
     
-    <div class="card">
-      <div class="card-title" style="margin:0; margin-bottom:12px;">실황 OST 획득 현황</div>
+    <div class="card" style="background: linear-gradient(145deg, var(--bg3), var(--bg2)); border-color: var(--brd2);">
+      <div class="card-title" style="margin:0; margin-bottom:16px;">💿 실황 OST 획득 현황</div>
       <div id="ost-container" style="margin-bottom:0;"></div>
     </div>
     
@@ -539,7 +541,7 @@ const CONFIG = {
 // ============================================================
 let state = {
   records: [], 
-  boards: [{ id: "b1", name: "1", initial: 0, active: true }], // 기본 도장판 이름 숫자 1로 변경
+  boards: [{ id: "b1", name: "1", initial: 0, active: true }],
   wallet: [], 
   schedule: [],
   events: []
@@ -767,7 +769,7 @@ function renderBoardCheckboxesInModal(selectedId = "") {
 
 function addBoardFromModal() {
   const nameInput = document.getElementById('rm-new-board-name').value;
-  const newName = nameInput.trim() || `${state.boards.length + 1}`; // '번' 글자 제거
+  const newName = nameInput.trim() || `${state.boards.length + 1}`; 
   const newId = "b" + Date.now();
   state.boards.push({ id: newId, name: newName, initial: 0, active: true });
   saveState();
@@ -791,7 +793,7 @@ function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-memo').value = "";
 
   selectMult(1); 
-  renderBoardCheckboxesInModal(""); // 기본값 '선택 안 함'
+  renderBoardCheckboxesInModal(""); 
 
   openModal('modal-record');
 }
@@ -1163,22 +1165,29 @@ function calculateWalletBalances() {
   return { current, final };
 }
 
+// 배열 자체의 순서를 직접 교환(스왑)하여 UI가 즉각 갱신되도록 수정한 로직
 function moveWalletOrder(id, delta) {
   const item = state.wallet.find(w => w.id === id);
   if (!item) return;
 
+  // 1. 같은 날짜의 수동 아이템만 찾아서 현재 정렬 상태로 가져오기
   let siblings = state.wallet.filter(w => w.date === item.date);
   siblings.sort((a, b) => (a.order || 0) - (b.order || 0));
-
-  siblings.forEach((w, idx) => w.order = (idx + 1) * 10);
 
   const currIdx = siblings.findIndex(w => w.id === id);
   const targetIdx = currIdx + delta;
 
+  // 2. 바꿀 수 있는 대상이 존재한다면, 그 두 아이템의 order를 맞교환
   if (targetIdx >= 0 && targetIdx < siblings.length) {
-    const temp = siblings[currIdx].order;
+    // 만약 둘 다 기본값 0이라 겹쳐있다면 10, 20... 으로 임의 배정 먼저 해줌
+    if (siblings[currIdx].order === siblings[targetIdx].order) {
+       siblings.forEach((s, idx) => { s.order = (idx + 1) * 10; });
+    }
+    
+    // 순서 스왑
+    const tempOrder = siblings[currIdx].order;
     siblings[currIdx].order = siblings[targetIdx].order;
-    siblings[targetIdx].order = temp;
+    siblings[targetIdx].order = tempOrder;
     
     saveState();
     renderCoupons();
@@ -1268,6 +1277,8 @@ function renderCoupons() {
     if (a.date !== b.date) return a.date.localeCompare(b.date); 
     const timeA = a.time || "";
     const timeB = b.time || "";
+    // 자동 연동이 아니라 수동 입력된 내역들끼리는 부여된 order 값으로 정렬
+    if (timeA === "" && timeB === "") return (a.order || 0) - (b.order || 0);
     if (timeA !== timeB) return timeA.localeCompare(timeB);
     return (a.order || 0) - (b.order || 0);
   });
@@ -1341,10 +1352,11 @@ function saveWallet() {
   const entry = {
     id: id, date: document.getElementById('wm-date').value,
     type: document.querySelector('input[name="wm-type"]:checked').value,
-    memo: document.getElementById('wm-memo').value, items: items, order: 0 
+    memo: document.getElementById('wm-memo').value, items: items, 
+    order: Date.now() // 신규 생성 시 가장 아래에 배치되도록 시간값 부여
   };
   const idx = state.wallet.findIndex(w => w.id === id);
-  if(idx >= 0) { entry.order = state.wallet[idx].order || 0; state.wallet[idx] = entry; } 
+  if(idx >= 0) { entry.order = state.wallet[idx].order || Date.now(); state.wallet[idx] = entry; } 
   else { state.wallet.push(entry); }
   saveState(); closeModal('modal-wallet'); renderCoupons();
 }
@@ -1384,6 +1396,18 @@ function deleteBoard(boardId) {
   }
 }
 
+function editBoardName(boardId) {
+  const board = state.boards.find(b => b.id === boardId);
+  if (!board) return;
+  const newName = prompt("도장판의 새로운 이름을 입력하세요:", board.name);
+  if (newName !== null && newName.trim() !== "") {
+    board.name = newName.trim();
+    saveState();
+    renderCoupons();
+    renderRecords();
+  }
+}
+
 function renderBoardStatus() {
   let currBoardCounts = {};
   let finalBoardCounts = {};
@@ -1412,7 +1436,7 @@ function renderBoardStatus() {
     if (cCnt >= 7) currOst++;
     if (fCnt >= 7) finalOst++;
 
-    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > fCnt);
+    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cCnt);
     const pct = Math.min(100, (cCnt / maxMilestone) * 100); 
     
     let histRows = state.records
@@ -1433,11 +1457,12 @@ function renderBoardStatus() {
       return 'var(--txt3)';
     };
 
+    // 현재 개수 기준으로 안내 문구 출력
     let statusMsg = '';
-    if (fCnt >= 7) {
+    if (cCnt >= 7) {
        statusMsg = `<span style="color:var(--grn);">✓ 도장판 완료 (실황 OST 획득)</span>`;
     } else if (nxt) {
-       statusMsg = `다음(${nxt}개)까지 ${nxt - fCnt}개 남음`;
+       statusMsg = `다음(${nxt}개)까지 ${nxt - cCnt}개 남음`;
     } else {
        statusMsg = `<span style="color:var(--grn);">✓ 최종 보상 달성 완료</span>`;
     }
@@ -1447,6 +1472,7 @@ function renderBoardStatus() {
         <div class="flex-between" style="margin-bottom:4px;">
           <div style="display:flex; align-items:center; gap:8px;">
              <span style="font-weight:600; font-size:13px;">${b.name}</span>
+             <button class="btn sm ghost" style="padding:0 4px; font-size:10px; color:var(--blu2);" onclick="editBoardName('${b.id}')">수정</button>
              <button class="btn sm ghost" style="padding:0 4px; font-size:10px; color:var(--red3);" onclick="deleteBoard('${b.id}')">삭제</button>
           </div>
           <span style="font-size:10px; color:var(--txt4); cursor:pointer;" onclick="toggleCollapsible('board-hist-${b.id}')">상세 ▼</span>
@@ -1473,18 +1499,21 @@ function renderBoardStatus() {
     </div>`;
   }).join('');
   
+  // OST 현황 배너에 CD 디자인 적용
   document.getElementById('ost-container').innerHTML = `
-    <div class="wcard" style="width:100%; border:none; background:transparent;">
-      <div class="wcard-body" style="background:var(--bg3); border:1px solid var(--brd2); border-radius:6px;">
-        <div class="wcard-half">
-          <div class="wcard-label-curr">현재</div>
-          <div class="wcard-val" style="color:${currOst > 0 ? 'var(--grn)' : 'var(--txt3)'}">${currOst}</div>
-          <div class="wcard-sub">오늘까지 달성</div>
+    <div style="width:100%; display:flex; align-items:center; background:linear-gradient(135deg, var(--bg3), var(--bg2)); border:1px solid var(--brd2); border-radius:8px; padding:16px; gap:20px; overflow:hidden;">
+      
+      <div class="cd-record"></div>
+      
+      <div style="flex:1; display:flex; justify-content:space-around; align-items:center;">
+        <div style="text-align:center;">
+          <div style="font-size:11px; color:var(--grn); font-weight:700; margin-bottom:4px;">현재 획득</div>
+          <div style="font-size:24px; font-weight:700; font-family:'IBM Plex Sans KR'; color:${currOst > 0 ? 'var(--grn)' : 'var(--txt3)'};">${currOst}</div>
         </div>
-        <div class="wcard-half">
-          <div class="wcard-label-final">최종</div>
-          <div class="wcard-val" style="color:var(--txt)">${finalOst}</div>
-          <div class="wcard-sub">전체 기준</div>
+        <div style="width:1px; height:30px; background:rgba(255,255,255,0.2);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:11px; color:var(--txt3); font-weight:600; margin-bottom:4px;">최종 예정</div>
+          <div style="font-size:24px; font-weight:700; font-family:'IBM Plex Sans KR'; color:var(--txt);">${finalOst}</div>
         </div>
       </div>
     </div>
@@ -1494,7 +1523,7 @@ function renderBoardStatus() {
 function addBoard() {
   const name = prompt("새 도장판 이름을 입력하세요 (비우면 자동 번호)");
   if(name === null) return;
-  const newName = name.trim() || `${state.boards.length + 1}`; // '번' 삭제
+  const newName = name.trim() || `${state.boards.length + 1}`; 
   state.boards.push({ id: "b" + Date.now(), name: newName, initial: 0, active: true });
   saveState(); renderCoupons(); renderRecords();
 }
