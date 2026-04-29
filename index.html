@@ -259,6 +259,12 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
       </div>
       <div id="board-status-container" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
     </div>
+    
+    <div class="card">
+      <div class="card-title" style="margin:0; margin-bottom:12px;">실황 OST 획득 현황</div>
+      <div class="wallet-grid" id="ost-container" style="margin-bottom:0;"></div>
+    </div>
+    
   </div>
 
   <div class="page" id="page-stats">
@@ -1139,8 +1145,8 @@ function renderCoupons() {
   const bals = calculateWalletBalances();
   
   const getColor = (val) => {
-    if(val > 0) return 'var(--grn)'; // 양수는 노란색
-    if(val < 0) return 'var(--red3)'; // 음수는 하늘색
+    if(val > 0) return 'var(--grn)'; // 양수 노란색
+    if(val < 0) return 'var(--red3)'; // 음수 하늘색
     return 'var(--txt3)'; // 0은 회색
   };
 
@@ -1158,7 +1164,7 @@ function renderCoupons() {
           </div>
           <div class="wcard-half">
             <div class="wcard-label-final">최종</div>
-            <div class="wcard-val" style="color:${getColor(fVal)}">${fVal}</div>
+            <div class="wcard-val" style="color:var(--txt)">${fVal}</div>
             <div class="wcard-sub">입력 전체 기준</div>
           </div>
         </div>
@@ -1206,7 +1212,7 @@ function renderCoupons() {
             id: 'auto_ms_' + r.id + '_' + bid,
             date: r.date, time: r.time, type: 'add',
             items: { d50: 1 },
-            memo: "3🎁 50% 할인권 획득", // 요청하신 문구로 수정 완료
+            memo: "3🎁 50% 할인권 획득", // 직관적인 메모로 수정 완료
             isAuto: true, order: 2
           });
         }
@@ -1319,18 +1325,35 @@ function deleteWallet(id) {
 }
 
 function renderBoardStatus() {
-  let boardCounts = {};
-  state.boards.forEach(b => boardCounts[b.id] = 0);
+  let currBoardCounts = {};
+  let finalBoardCounts = {};
+  state.boards.forEach(b => { currBoardCounts[b.id] = 0; finalBoardCounts[b.id] = 0; });
+  
+  const today = todayStr();
   state.records.forEach(r => {
-    if(r.boards) { Object.keys(r.boards).forEach(bid => { if(boardCounts[bid] !== undefined) boardCounts[bid] += r.boards[bid]; }); }
+    if(r.boards) { 
+      Object.keys(r.boards).forEach(bid => { 
+        if(finalBoardCounts[bid] !== undefined) { 
+          finalBoardCounts[bid] += r.boards[bid]; 
+          if(r.date <= today) currBoardCounts[bid] += r.boards[bid];
+        } 
+      }); 
+    }
   });
 
   const maxMilestone = Math.max(...CONFIG.STAMP_MILESTONES);
+  let currOst = 0;
+  let finalOst = 0;
 
   document.getElementById('board-status-container').innerHTML = state.boards.map(b => {
-    const cnt = boardCounts[b.id];
-    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cnt);
-    const pct = Math.min(100, (cnt / maxMilestone) * 100);
+    const cCnt = currBoardCounts[b.id];
+    const fCnt = finalBoardCounts[b.id];
+    
+    if (cCnt >= 7) currOst++;
+    if (fCnt >= 7) finalOst++;
+
+    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > fCnt);
+    const pct = Math.min(100, (fCnt / maxMilestone) * 100);
     
     let histRows = state.records
       .filter(r => r.boards && r.boards[b.id])
@@ -1345,13 +1368,32 @@ function renderBoardStatus() {
       return `<div style="position:absolute; left:${mPct}%; top:-2px; bottom:-2px; width:2px; background:var(--txt2); z-index:2; border-radius:1px; opacity:0.8;"></div>`;
     }).join('');
 
+    const getBoardColor = (val) => {
+      if (val > 0) return 'var(--grn)';
+      return 'var(--txt3)';
+    };
+
+    let statusMsg = '';
+    if (fCnt >= 7) {
+       statusMsg = `<span style="color:var(--grn);">✓ 도장판 완료 (실황 OST 획득)</span>`;
+    } else if (nxt) {
+       statusMsg = `다음(${nxt}개)까지 ${nxt - fCnt}개 남음`;
+    } else {
+       statusMsg = `<span style="color:var(--grn);">✓ 최종 보상 달성 완료</span>`;
+    }
+
     return `<div style="background:var(--bg3); border:1px solid var(--brd2); padding:12px; border-radius:8px;">
-      <div class="flex-between" style="margin-bottom:8px;">
-        <span style="font-weight:600; font-size:13px;">${b.name}</span>
-        <span style="font-size:18px; font-family:'IBM Plex Sans KR'; color:var(--red); font-weight:700; cursor:pointer;" onclick="toggleCollapsible('board-hist-${b.id}')">${cnt} <span style="font-size:12px; color:var(--txt3);">개 ▼</span></span>
+      <div style="margin-bottom:8px;">
+        <div class="flex-between" style="margin-bottom:4px;">
+          <span style="font-weight:600; font-size:13px;">${b.name}</span>
+          <span style="font-size:10px; color:var(--txt4); cursor:pointer;" onclick="toggleCollapsible('board-hist-${b.id}')">상세 ▼</span>
+        </div>
+        <div style="font-size:11px; color:var(--txt4);">
+          현재 <span style="font-size:16px; color:${getBoardColor(cCnt)}; font-weight:700; font-family:'IBM Plex Sans KR';">${cCnt}</span> / 최종 <span style="font-size:16px; color:var(--txt); font-weight:700; font-family:'IBM Plex Sans KR';">${fCnt}</span>
+        </div>
       </div>
       <div style="font-size:10px; color:var(--txt3); margin-bottom:6px;">
-        ${nxt ? `다음(${nxt}개)까지 ${nxt - cnt}개 남음` : `<span style="color:var(--grn);">✓ 최종 보상 달성 완료</span>`}
+        ${statusMsg}
       </div>
       
       <div style="height:6px; background:var(--bg4); border-radius:3px; position:relative;">
@@ -1367,6 +1409,24 @@ function renderBoardStatus() {
       </div>
     </div>`;
   }).join('');
+  
+  // Render OST Card
+  document.getElementById('ost-container').innerHTML = `
+    <div class="wcard" style="width:100%; border:none; background:transparent;">
+      <div class="wcard-body" style="background:var(--bg3); border:1px solid var(--brd2); border-radius:6px;">
+        <div class="wcard-half">
+          <div class="wcard-label-curr">현재</div>
+          <div class="wcard-val" style="color:${currOst > 0 ? 'var(--grn)' : 'var(--txt3)'}">${currOst}</div>
+          <div class="wcard-sub">오늘까지 달성</div>
+        </div>
+        <div class="wcard-half">
+          <div class="wcard-label-final">최종</div>
+          <div class="wcard-val" style="color:var(--txt)">${finalOst}</div>
+          <div class="wcard-sub">전체 기준</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function addBoard() {
