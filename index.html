@@ -177,6 +177,37 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .heatmap-legend { display:flex; gap:10px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
 .legend-item { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--txt2); }
 .legend-dot { width:12px; height:12px; border-radius:2px; }
+
+/* CD ANIMATION & STYLE */
+@keyframes cd-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.cd-disk {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #2a2a2a, #888, #e0e0e0, #888, #2a2a2a);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 0 2px rgba(255,255,255,0.5);
+  position: relative;
+  flex-shrink: 0;
+  animation: cd-spin 5s linear infinite;
+}
+.cd-disk::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.cd-disk::after {
+  content: '';
+  width: 14px; height: 14px;
+  background: var(--bg2);
+  border-radius: 50%;
+  border: 2px solid #999;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+}
 </style>
 </head>
 <body>
@@ -262,7 +293,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     
     <div class="card">
       <div class="card-title" style="margin:0; margin-bottom:12px;">실황 OST 획득 현황</div>
-      <div class="wallet-grid" id="ost-container" style="margin-bottom:0;"></div>
+      <div id="ost-container" style="margin-bottom:0;"></div>
     </div>
     
   </div>
@@ -508,7 +539,7 @@ const CONFIG = {
 // ============================================================
 let state = {
   records: [], 
-  boards: [{ id: "b1", name: "1번", initial: 0, active: true }],
+  boards: [{ id: "b1", name: "1", initial: 0, active: true }], // 기본 도장판 이름 숫자 1로 변경
   wallet: [], 
   schedule: [],
   events: []
@@ -522,7 +553,7 @@ function loadState() {
   if(saved) {
     const parsed = JSON.parse(saved);
     state.records = parsed.records || [];
-    state.boards = parsed.boards || [{ id: "b1", name: "1번", initial: 0, active: true }];
+    state.boards = parsed.boards || [{ id: "b1", name: "1", initial: 0, active: true }];
     state.wallet = parsed.wallet || [];
     state.schedule = parsed.schedule || [];
     state.events = parsed.events || [];
@@ -736,7 +767,7 @@ function renderBoardCheckboxesInModal(selectedId = "") {
 
 function addBoardFromModal() {
   const nameInput = document.getElementById('rm-new-board-name').value;
-  const newName = nameInput.trim() || `${state.boards.length + 1}번`;
+  const newName = nameInput.trim() || `${state.boards.length + 1}`; // '번' 글자 제거
   const newId = "b" + Date.now();
   state.boards.push({ id: newId, name: newName, initial: 0, active: true });
   saveState();
@@ -760,7 +791,7 @@ function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-memo').value = "";
 
   selectMult(1); 
-  renderBoardCheckboxesInModal(""); 
+  renderBoardCheckboxesInModal(""); // 기본값 '선택 안 함'
 
   openModal('modal-record');
 }
@@ -1134,8 +1165,21 @@ function calculateWalletBalances() {
 
 function moveWalletOrder(id, delta) {
   const item = state.wallet.find(w => w.id === id);
-  if (item) {
-    item.order = (item.order || 0) + delta;
+  if (!item) return;
+
+  let siblings = state.wallet.filter(w => w.date === item.date);
+  siblings.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  siblings.forEach((w, idx) => w.order = (idx + 1) * 10);
+
+  const currIdx = siblings.findIndex(w => w.id === id);
+  const targetIdx = currIdx + delta;
+
+  if (targetIdx >= 0 && targetIdx < siblings.length) {
+    const temp = siblings[currIdx].order;
+    siblings[currIdx].order = siblings[targetIdx].order;
+    siblings[targetIdx].order = temp;
+    
     saveState();
     renderCoupons();
   }
@@ -1145,9 +1189,9 @@ function renderCoupons() {
   const bals = calculateWalletBalances();
   
   const getColor = (val) => {
-    if(val > 0) return 'var(--grn)';
-    if(val < 0) return 'var(--red3)'; 
-    return 'var(--txt3)'; 
+    if(val > 0) return 'var(--grn)'; // 양수 노란색
+    if(val < 0) return 'var(--red3)'; // 음수 하늘색
+    return 'var(--txt3)'; // 0은 회색
   };
 
   document.getElementById('wallet-cards').innerHTML = CONFIG.WALLET_FIELDS.map(f => {
@@ -1193,13 +1237,13 @@ function renderCoupons() {
         items[discDef.useWallet] = 1;
         combinedWallet.push({
           id: 'auto_sub_' + r.id, date: r.date, time: r.time, type: 'sub', items: items,
-          memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, isAuto: true, order: 0
+          memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, isAuto: true, order: -1 
         });
       }
 
       combinedWallet.push({
         id: 'auto_add_' + r.id, date: r.date, time: r.time, type: 'add', items: { re: 1 },
-        memo: `${m}/${d} ${r.time} 관극 획득`, isAuto: true, order: 1
+        memo: `${m}/${d} ${r.time} 관극 획득`, isAuto: true, order: -0.5 
       });
     }
 
@@ -1213,7 +1257,7 @@ function renderCoupons() {
             date: r.date, time: r.time, type: 'add',
             items: { d50: 1 },
             memo: "3🎁 50% 할인권 획득", 
-            isAuto: true, order: 2
+            isAuto: true, order: 0 
           });
         }
       });
@@ -1324,6 +1368,22 @@ function deleteWallet(id) {
   }
 }
 
+function deleteBoard(boardId) {
+  const board = state.boards.find(b => b.id === boardId);
+  if (!board) return;
+  if (confirm(`'${board.name}' 도장판을 삭제하시겠습니까?\n(도장판을 삭제해도 관극 기록은 지워지지 않으며 '선택 안 함'으로 변경됩니다.)`)) {
+    state.boards = state.boards.filter(b => b.id !== boardId);
+    state.records.forEach(r => {
+      if (r.boards && r.boards[boardId] !== undefined) {
+        delete r.boards[boardId];
+      }
+    });
+    saveState();
+    renderCoupons();
+    renderRecords();
+  }
+}
+
 function renderBoardStatus() {
   let currBoardCounts = {};
   let finalBoardCounts = {};
@@ -1353,7 +1413,7 @@ function renderBoardStatus() {
     if (fCnt >= 7) finalOst++;
 
     const nxt = CONFIG.STAMP_MILESTONES.find(m => m > fCnt);
-    const pct = Math.min(100, (fCnt / maxMilestone) * 100);
+    const pct = Math.min(100, (cCnt / maxMilestone) * 100); 
     
     let histRows = state.records
       .filter(r => r.boards && r.boards[b.id])
@@ -1385,7 +1445,10 @@ function renderBoardStatus() {
     return `<div style="background:var(--bg3); border:1px solid var(--brd2); padding:12px; border-radius:8px;">
       <div style="margin-bottom:8px;">
         <div class="flex-between" style="margin-bottom:4px;">
-          <span style="font-weight:600; font-size:13px;">${b.name}</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+             <span style="font-weight:600; font-size:13px;">${b.name}</span>
+             <button class="btn sm ghost" style="padding:0 4px; font-size:10px; color:var(--red3);" onclick="deleteBoard('${b.id}')">삭제</button>
+          </div>
           <span style="font-size:10px; color:var(--txt4); cursor:pointer;" onclick="toggleCollapsible('board-hist-${b.id}')">상세 ▼</span>
         </div>
         <div style="font-size:11px; color:var(--txt4);">
@@ -1410,7 +1473,6 @@ function renderBoardStatus() {
     </div>`;
   }).join('');
   
-  // Render OST Card
   document.getElementById('ost-container').innerHTML = `
     <div class="wcard" style="width:100%; border:none; background:transparent;">
       <div class="wcard-body" style="background:var(--bg3); border:1px solid var(--brd2); border-radius:6px;">
@@ -1432,7 +1494,7 @@ function renderBoardStatus() {
 function addBoard() {
   const name = prompt("새 도장판 이름을 입력하세요 (비우면 자동 번호)");
   if(name === null) return;
-  const newName = name.trim() || `${state.boards.length + 1}번`;
+  const newName = name.trim() || `${state.boards.length + 1}`; // '번' 삭제
   state.boards.push({ id: "b" + Date.now(), name: newName, initial: 0, active: true });
   saveState(); renderCoupons(); renderRecords();
 }
@@ -1445,7 +1507,7 @@ function renderStats() {
   let grouped = {};
 
   state.records.forEach(r => {
-    if (r.discount === '교환' || r.discount === '교환/나눔') return;
+    if (r.discount === '교환' || r.discount === '교환/나눔' || r.discount === '나눔') return;
     let k = r.date + '_' + r.time;
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(r);
@@ -1453,10 +1515,12 @@ function renderStats() {
 
   for (let k in grouped) {
     let grp = grouped[k];
-    let seatedRecords = grp.filter(x => x.seatZone && x.seatZone.trim() !== "");
-    if (seatedRecords.length > 0) {
-      let detailedSeat = seatedRecords.find(x => x.seatRow !== "" && x.seatNum !== "");
-      validRecords.push(detailedSeat || seatedRecords[0]);
+    if (grp.length === 1) {
+      validRecords.push(grp[0]);
+    } else {
+      let seated = grp.find(x => x.seatZone && x.seatRow !== "" && x.seatNum !== "");
+      if (!seated) seated = grp.find(x => x.seatZone);
+      validRecords.push(seated || grp[0]);
     }
   }
 
@@ -1636,6 +1700,7 @@ window.onload = () => {
   switchTab('record', document.querySelector('.tab-btn')); 
 };
 
+// 코드 수정 중에는 서비스 워커(캐시)를 잠시 꺼둡니다!
 // if ('serviceWorker' in navigator) {
 //   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 // }
