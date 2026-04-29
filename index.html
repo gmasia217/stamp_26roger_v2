@@ -141,8 +141,10 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .cs-time { font-size:11px; font-weight:700; color:var(--txt); }
 .cs-time::before { content: '• '; }
 .cs-cast { font-size:10px; color:var(--txt3); margin-top:2px; padding-left:0; word-break:break-all; white-space:normal; line-height:1.2; }
+/* 일반 관람 표 (하늘색) */
 .cs-chip.booked { background:rgba(0, 229, 255, 0.1); border-color:var(--red); }
 .cs-chip.booked .cs-time, .cs-chip.booked .cs-cast { color:var(--red); }
+/* 좌석이 없는 회차 표 (회색) */
 .cs-chip.unseated { background:rgba(123, 139, 166, 0.15); border-color:var(--txt4); }
 .cs-chip.unseated .cs-time, .cs-chip.unseated .cs-cast { color:var(--txt4); }
 
@@ -270,7 +272,6 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     <div class="card">
       <div class="card-title">좌석 히트맵</div>
       <div style="font-size:11px; color:var(--txt4); font-weight:400; margin-top:-8px; margin-bottom:16px;">📍 NOL 서경스퀘어 스콘 2관</div>
-      
       <div class="heatmap-wrap" id="heatmap-container" style="margin-top:10px;"></div>
       <div class="heatmap-legend">
         <div class="legend-item"><div class="legend-dot" style="background:var(--bg4);"></div>0회</div>
@@ -614,6 +615,7 @@ function renderRecords() {
     }
 
     const dispDisc = formatDiscount(r.discount);
+    
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
     const dimCls = isExchange ? 'opacity: 0.3;' : '';
 
@@ -1090,15 +1092,35 @@ function calculateWalletBalances() {
     });
   });
   
-  state.records.forEach(r => {
-    if (r.discount !== '교환' && r.discount !== '교환/나눔') {
+  let boardCum = {};
+  state.boards.forEach(b => boardCum[b.id] = b.initial || 0);
+
+  let sortedRecords = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  sortedRecords.forEach(r => {
+    const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
+
+    if (!isExchange) {
       final['re'] += 1;
       if (r.date <= today) current['re'] += 1;
+      
+      const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
+      if(discDef && discDef.useWallet) {
+        final[discDef.useWallet] -= 1;
+        if (r.date <= today) current[discDef.useWallet] -= 1;
+      }
     }
-    const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
-    if(discDef && discDef.useWallet) {
-      final[discDef.useWallet] -= 1;
-      if (r.date <= today) current[discDef.useWallet] -= 1;
+    
+    // 도장판 보상 50% 할인권 자동 획득 계산 (교환이어도 수동으로 도장 찍었으면 카운트)
+    if (r.boards) {
+      Object.keys(r.boards).forEach(bid => {
+        let before = boardCum[bid] || 0;
+        boardCum[bid] = before + r.boards[bid];
+        if (before < 3 && boardCum[bid] >= 3) {
+          final['d50'] += 1;
+          if (r.date <= today) current['d50'] += 1;
+        }
+      });
     }
   });
   
@@ -1148,26 +1170,66 @@ function renderCoupons() {
   let combinedWallet = [];
   state.wallet.forEach(w => combinedWallet.push({...w, isAuto: false}));
   
-  state.records.forEach(r => {
-    if (r.discount === '교환' || r.discount === '교환/나눔') return;
+  let boardCum = {};
+  state.boards.forEach(b => boardCum[b.id] = b.initial || 0);
+  let sortedRecords = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  sortedRecords.forEach(r => {
     const dateParts = r.date.split('-');
     const m = parseInt(dateParts[1], 10);
     const d = parseInt(dateParts[2], 10);
     
-    const discDef = CONFIG.DISCOUNTS.find(d => d.value === r.discount);
-    if (discDef && discDef.useWallet) {
-      let items = {};
-      items[discDef.useWallet] = 1;
+    const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
+
+    if (!isExchange) {
+      const discDef = CONFIG.DISCOUNTS.find(disc => disc.value === r.discount);
+      if (discDef && discDef.useWallet) {
+        let items = {};
+        items[discDef.useWallet] = 1;
+        combinedWallet.push({
+          id: 'auto_sub_' + r.id,
+          date: r.date,
+          time: r.time,
+          type: 'sub',
+          items: items,
+          memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, 
+          isAuto: true,
+          order: 0
+        });
+      }
+
       combinedWallet.push({
-        id: 'auto_sub_' + r.id, date: r.date, time: r.time, type: 'sub', items: items,
-        memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, isAuto: true, order: 0
+        id: 'auto_add_' + r.id,
+        date: r.date,
+        time: r.time,
+        type: 'add',
+        items: { re: 1 },
+        memo: `${m}/${d} ${r.time} 관극 획득`, 
+        isAuto: true,
+        order: 1
       });
     }
 
-    combinedWallet.push({
-      id: 'auto_add_' + r.id, date: r.date, time: r.time, type: 'add', items: { re: 1 },
-      memo: `${m}/${d} ${r.time} 관극 획득`, isAuto: true, order: 1
-    });
+    // 도장판 3개 달성 시 50% 할인권 자동 획득 지갑 기록
+    if (r.boards) {
+      Object.keys(r.boards).forEach(bid => {
+        let before = boardCum[bid] || 0;
+        boardCum[bid] = before + r.boards[bid];
+        if (before < 3 && boardCum[bid] >= 3) {
+          const boardName = state.boards.find(b => b.id === bid)?.name || `${bid}`;
+          combinedWallet.push({
+            id: 'auto_ms_' + r.id + '_' + bid,
+            date: r.date,
+            time: r.time,
+            type: 'add',
+            items: { d50: 1 },
+            memo: `${m}/${d} ${r.time} ${boardName} 3개 보상`,
+            isAuto: true,
+            order: 2 // 획득 내역 중 가장 후순위 표시
+          });
+        }
+      });
+    }
   });
 
   combinedWallet.sort((a,b) => {
@@ -1183,11 +1245,14 @@ function renderCoupons() {
     histTbody.innerHTML = `<tr><td colspan="9" style="padding:20px; color:var(--txt4);">기록이 없습니다</td></tr>`;
   } else {
     const getDow = (dStr) => { const d = new Date(dStr + 'T00:00:00'); return ['일','월','화','수','목','금','토'][d.getDay()]; };
+    
     histTbody.innerHTML = combinedWallet.map(w => {
       const ds = w.date.split('-');
       const dateDisp = `${parseInt(ds[1])}.${parseInt(ds[2])}(${getDow(w.date)})`;
+      
       const isAdd = w.type === 'add';
       const typeHtml = isAdd ? `<span style="color:var(--txt); font-weight:700; font-size:16px;">+</span>` : `<span style="color:var(--txt); font-weight:700; font-size:16px;">-</span>`;
+      
       let colHtml = '';
       CONFIG.WALLET_FIELDS.forEach(f => {
         let valStr = '';
@@ -1197,13 +1262,26 @@ function renderCoupons() {
         }
         colHtml += `<td>${valStr}</td>`;
       });
-      let ctrlHtml = w.isAuto ? `<span style="font-size:10px; color:var(--dim);">자동 연동</span>` : `
+      
+      let ctrlHtml = '';
+      if (!w.isAuto) {
+        ctrlHtml = `
           <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', 1)">▼</button>
           <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', -1)">▲</button>
           <button class="btn sm" onclick="editWallet('${w.id}')" style="padding:2px 4px; margin-left:6px;">✎</button>
           <button class="btn sm" onclick="deleteWallet('${w.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
         `;
-      return `<tr><td>${dateDisp}</td><td>${typeHtml}</td>${colHtml}<td style="text-align:left;">${w.memo}</td><td>${ctrlHtml}</td></tr>`;
+      } else {
+        ctrlHtml = `<span style="font-size:10px; color:var(--dim);">자동 연동</span>`;
+      }
+
+      return `<tr>
+        <td style="font-weight:600;">${dateDisp}</td>
+        <td>${typeHtml}</td>
+        ${colHtml}
+        <td style="text-align:left; color:var(--txt3); font-size:11px; white-space:nowrap;">${w.memo}</td>
+        <td style="white-space:nowrap;">${ctrlHtml}</td>
+      </tr>`;
     }).join('');
   }
   renderBoardStatus();
@@ -1245,13 +1323,22 @@ function saveWallet() {
   if(!hasValue) { alert("수량을 1개 이상 입력하세요."); return; }
 
   const entry = {
-    id: id, date: document.getElementById('wm-date').value,
+    id: id, 
+    date: document.getElementById('wm-date').value,
     type: document.querySelector('input[name="wm-type"]:checked').value,
-    memo: document.getElementById('wm-memo').value, items: items, order: 0 
+    memo: document.getElementById('wm-memo').value, 
+    items: items,
+    order: 0 
   };
+
   const idx = state.wallet.findIndex(w => w.id === id);
-  if(idx >= 0) { entry.order = state.wallet[idx].order || 0; state.wallet[idx] = entry; } 
-  else { state.wallet.push(entry); }
+  if(idx >= 0) {
+    entry.order = state.wallet[idx].order || 0; 
+    state.wallet[idx] = entry; 
+  } else {
+    state.wallet.push(entry);
+  }
+
   saveState(); closeModal('modal-wallet'); renderCoupons();
 }
 
@@ -1367,9 +1454,7 @@ function renderStats() {
   CONFIG.ROLES.forEach((role, idx) => {
     const castKey = `cast${idx+1}`;
     role.actors.forEach((actor, aIdx) => {
-      // 내 관극 횟수
       const myCnt = validRecords.filter(r => r[castKey] === actor).length;
-      // 배우의 전체 회차 (schedule.json 기반)
       const totalCnt = (state.schedule || []).filter(s => s.cast1 === actor || s.skylar === actor || s.cast2 === actor || s.didi === actor).length;
       
       actorStatsHtml += `<tr>`;
@@ -1432,7 +1517,7 @@ function renderStats() {
   zones.forEach(z => { hmHtml += `<div class="zone-col"><div style="font-size:10px; font-weight:700; color:var(--txt3); margin-bottom:4px;">${z.name}구역</div>${zHtml[z.name]}</div>`; });
   document.getElementById('heatmap-container').innerHTML = hmHtml;
 
-  // --- 관극 회차 렌더링 (좌석 정보가 있는 것만) ---
+  // --- 관극 회차 렌더링 ---
   let sessionRecords = validRecords.filter(r => r.seatZone && r.seatZone.trim() !== "");
   let sortedSessions = [...sessionRecords].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   
@@ -1537,9 +1622,10 @@ window.onload = () => {
   switchTab('record', document.querySelector('.tab-btn')); 
 };
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-}
+// 코드 수정 중에는 서비스 워커(캐시)를 잠시 꺼둡니다!
+// if ('serviceWorker' in navigator) {
+//   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+// }
 </script>
 
 </body>
