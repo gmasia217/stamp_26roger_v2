@@ -186,37 +186,35 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .cd-record {
   width: 65px; height: 65px;
   border-radius: 50%;
-  /* 밝은 톤의 그라데이션 */
+  /* 밝은 톤의 은백색 그라데이션 */
   background: conic-gradient(
-    #f8f9fa 0deg, #e9ecef 45deg, #dee2e6 90deg, 
-    #f8f9fa 135deg, #e9ecef 180deg, #dee2e6 225deg, 
-    #f8f9fa 270deg, #e9ecef 315deg, #f8f9fa 360deg
+    #ffffff 0deg, #e0e0e0 45deg, #ffffff 90deg, 
+    #e0e0e0 135deg, #ffffff 180deg, #e0e0e0 225deg, 
+    #ffffff 270deg, #e0e0e0 315deg, #ffffff 360deg
   );
   position: relative;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 4px rgba(255,255,255,0.8);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 3px rgba(255,255,255,0.8);
   animation: cd-spin 4s linear infinite;
   flex-shrink: 0;
 }
-/* CD 안쪽 반짝이는 디테일 선 */
 .cd-record::before {
   content: '';
   position: absolute;
   inset: 5px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.6);
-  box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.02);
 }
-/* CD 중앙 구멍 (투명하게 뚫린 듯한 효과) */
 .cd-record::after {
   content: '';
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   width: 14px; height: 14px;
-  background: var(--bg2); /* 배경색과 동일하게 */
+  background: var(--bg2);
   border-radius: 50%;
-  border: 2px solid #ced4da;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  border: 2px solid #ccc;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
 }
 </style>
 </head>
@@ -553,6 +551,7 @@ let state = {
   records: [], 
   boards: [{ id: "b1", name: "1", initial: 0, active: true }],
   wallet: [], 
+  walletOrder: {}, // 수동-자동 스왑을 기억할 전용 딕셔너리
   schedule: [],
   events: []
 };
@@ -567,6 +566,7 @@ function loadState() {
     state.records = parsed.records || [];
     state.boards = parsed.boards || [{ id: "b1", name: "1", initial: 0, active: true }];
     state.wallet = parsed.wallet || [];
+    state.walletOrder = parsed.walletOrder || {}; // 스왑 내역 로드
     state.schedule = parsed.schedule || [];
     state.events = parsed.events || [];
   }
@@ -1182,27 +1182,108 @@ function calculateWalletBalances() {
   return { current, final };
 }
 
-// 순서 변경 로직 수정: 모든 항목에 고유한 order 값을 강제 재배정 후 교환
-function moveWalletOrder(id, delta) {
-  const item = state.wallet.find(w => w.id === id);
-  if (!item) return;
+function getCombinedWallet() {
+  let combined = [];
+  
+  // 수동 기록 불러오기 (초기 생성 시간 또는 지정된 order 유지)
+  state.wallet.forEach(w => {
+     combined.push({
+       ...w, 
+       isAuto: false, 
+       defaultOrder: w.order !== undefined ? w.order : (w.createTime || Date.now())
+     });
+  });
+  
+  let boardCum = {};
+  state.boards.forEach(b => boardCum[b.id] = b.initial || 0);
 
-  // 1. 같은 날짜의 수동 기록만 모아서 현재 보이는 순서대로 정렬
-  let siblings = state.wallet.filter(w => w.date === item.date && !w.isAuto);
-  siblings.sort((a, b) => (a.order || 0) - (b.order || 0));
+  let sortedRecords = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
-  // 2. 꼬여있는 order 값을 10 단위로 깔끔하게 초기화
-  siblings.forEach((w, idx) => w.order = (idx + 1) * 10);
+  // 자동 기록 생성
+  sortedRecords.forEach(r => {
+    const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
+
+    if (!isExchange) {
+      const dateParts = r.date.split('-');
+      const m = parseInt(dateParts[1], 10);
+      const d = parseInt(dateParts[2], 10);
+
+      const discDef = CONFIG.DISCOUNTS.find(disc => disc.value === r.discount);
+      if (discDef && discDef.useWallet) {
+        combined.push({
+          id: 'auto_sub_' + r.id, date: r.date, time: r.time, type: 'sub', items: { [discDef.useWallet]: 1 },
+          memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, isAuto: true, defaultOrder: 1
+        });
+      }
+
+      combined.push({
+        id: 'auto_add_' + r.id, date: r.date, time: r.time, type: 'add', items: { re: 1 },
+        memo: `${m}/${d} ${r.time} 관극 획득`, isAuto: true, defaultOrder: 2
+      });
+    }
+
+    if (r.boards) {
+      Object.keys(r.boards).forEach(bid => {
+        let before = boardCum[bid] || 0;
+        boardCum[bid] = before + r.boards[bid];
+        if (before < 3 && boardCum[bid] >= 3) {
+          combined.push({
+            id: 'auto_ms_' + r.id + '_' + bid,
+            date: r.date, time: r.time, type: 'add',
+            items: { d50: 1 },
+            memo: "3🎁 50% 할인권 획득", 
+            isAuto: true, defaultOrder: 3
+          });
+        }
+      });
+    }
+  });
+
+  if(!state.walletOrder) state.walletOrder = {};
+  
+  combined.forEach(w => {
+    if(state.walletOrder[w.id] !== undefined) {
+      w.sortVal = state.walletOrder[w.id];
+    } else {
+      w.sortVal = w.defaultOrder;
+    }
+  });
+
+  return combined;
+}
+
+// 통합 리스트 내에서 순서(위/아래) 스왑을 완벽하게 처리
+function moveWalletOrder(id, delta, dateStr) {
+  let combined = getCombinedWallet();
+  let siblings = combined.filter(w => w.date === dateStr);
+
+  siblings.sort((a,b) => {
+    if (a.sortVal !== b.sortVal) return a.sortVal - b.sortVal;
+    const timeA = a.time || "";
+    const timeB = b.time || "";
+    return timeA.localeCompare(timeB);
+  });
 
   const currIdx = siblings.findIndex(w => w.id === id);
+  if (currIdx < 0) return;
   const targetIdx = currIdx + delta;
 
-  // 3. 바꿀 대상이 배열 범위 내에 있다면 서로의 order 값을 맞교환
   if (targetIdx >= 0 && targetIdx < siblings.length) {
-    const temp = siblings[currIdx].order;
-    siblings[currIdx].order = siblings[targetIdx].order;
-    siblings[targetIdx].order = temp;
+    if(!state.walletOrder) state.walletOrder = {};
     
+    // 순서가 꼬여있거나 겹쳐있을 수 있으므로 먼저 10 단위로 깔끔하게 초기화
+    siblings.forEach((w, idx) => w.sortVal = idx * 10);
+    
+    // 타겟과 서로 sortVal을 바꿈
+    const temp = siblings[currIdx].sortVal;
+    siblings[currIdx].sortVal = siblings[targetIdx].sortVal;
+    siblings[targetIdx].sortVal = temp;
+
+    // 변경된 정렬 값을 영구 저장
+    siblings.forEach(w => {
+       state.walletOrder[w.id] = w.sortVal;
+    });
+
     saveState();
     renderCoupons();
   }
@@ -1239,69 +1320,15 @@ function renderCoupons() {
     `;
   }).join('');
 
-  let combinedWallet = [];
-  state.wallet.forEach(w => combinedWallet.push({...w, isAuto: false}));
-  
-  let boardCum = {};
-  state.boards.forEach(b => boardCum[b.id] = b.initial || 0);
-  let sortedRecords = [...state.records].sort((a,b) => {
-    return a.date.localeCompare(b.date) || 
-           a.time.localeCompare(b.time) ||
-           (a.createTime || 0) - (b.createTime || 0);
-  });
+  let combinedWallet = getCombinedWallet();
 
-  sortedRecords.forEach(r => {
-    const dateParts = r.date.split('-');
-    const m = parseInt(dateParts[1], 10);
-    const d = parseInt(dateParts[2], 10);
-    
-    const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
-
-    if (!isExchange) {
-      const discDef = CONFIG.DISCOUNTS.find(disc => disc.value === r.discount);
-      if (discDef && discDef.useWallet) {
-        let items = {};
-        items[discDef.useWallet] = 1;
-        combinedWallet.push({
-          id: 'auto_sub_' + r.id, date: r.date, time: r.time, type: 'sub', items: items,
-          memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, isAuto: true, order: -2 
-        });
-      }
-
-      combinedWallet.push({
-        id: 'auto_add_' + r.id, date: r.date, time: r.time, type: 'add', items: { re: 1 },
-        memo: `${m}/${d} ${r.time} 관극 획득`, isAuto: true, order: -1 
-      });
-    }
-
-    if (r.boards) {
-      Object.keys(r.boards).forEach(bid => {
-        let before = boardCum[bid] || 0;
-        boardCum[bid] = before + r.boards[bid];
-        if (before < 3 && boardCum[bid] >= 3) {
-          combinedWallet.push({
-            id: 'auto_ms_' + r.id + '_' + bid,
-            date: r.date, time: r.time, type: 'add',
-            items: { d50: 1 },
-            memo: "3🎁 50% 할인권 획득", 
-            isAuto: true, order: 9999999 // 그 날짜의 가장 마지막으로 밀어냄
-          });
-        }
-      });
-    }
-  });
-
+  // 날짜 > 커스텀 정렬값(sortVal) > 시간 순으로 정렬
   combinedWallet.sort((a,b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date); 
-    
-    // 수동 기록끼리 먼저 정렬되도록 isAuto 여부 확인
-    if (!a.isAuto && !b.isAuto) return (a.order || 0) - (b.order || 0);
-    
-    // 자동과 섞여있다면 시간 우선, 그 다음 order
+    if (a.sortVal !== b.sortVal) return a.sortVal - b.sortVal;
     const timeA = a.time || "";
     const timeB = b.time || "";
-    if (timeA !== timeB) return timeA.localeCompare(timeB);
-    return (a.order || 0) - (b.order || 0);
+    return timeA.localeCompare(timeB);
   });
 
   const histTbody = document.getElementById('wallet-history-body');
@@ -1323,9 +1350,10 @@ function renderCoupons() {
         }
         colHtml += `<td>${valStr}</td>`;
       });
+      
       let ctrlHtml = w.isAuto ? `<span style="font-size:10px; color:var(--dim);">자동 연동</span>` : `
-          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', 1)">▼</button>
-          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', -1)">▲</button>
+          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', 1, '${w.date}')">▼</button>
+          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', -1, '${w.date}')">▲</button>
           <button class="btn sm" onclick="editWallet('${w.id}')" style="padding:2px 4px; margin-left:6px;">✎</button>
           <button class="btn sm" onclick="deleteWallet('${w.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
         `;
@@ -1378,10 +1406,10 @@ function saveWallet() {
     type: document.querySelector('input[name="wm-type"]:checked').value,
     memo: document.getElementById('wm-memo').value, 
     items: items, 
-    order: parseInt(cTime) || Date.now() // 고유 순서값 부여
+    createTime: parseInt(cTime) || Date.now() // 수동 기록의 초기 생성 시간
   };
   const idx = state.wallet.findIndex(w => w.id === id);
-  if(idx >= 0) { entry.order = state.wallet[idx].order || Date.now(); state.wallet[idx] = entry; } 
+  if(idx >= 0) { entry.order = state.wallet[idx].order; state.wallet[idx] = entry; } 
   else { state.wallet.push(entry); }
   saveState(); closeModal('modal-wallet'); renderCoupons();
 }
@@ -1391,7 +1419,7 @@ function editWallet(id) {
   if(!w) return;
   document.getElementById('wm-title').textContent = "할인권 내역 수정";
   document.getElementById('wm-id').value = w.id;
-  document.getElementById('wm-create-time').value = w.order || Date.now();
+  document.getElementById('wm-create-time').value = w.createTime || Date.now();
   document.getElementById('wm-date').value = w.date;
   selectWmType(w.type);
   document.getElementById('wm-memo').value = w.memo;
