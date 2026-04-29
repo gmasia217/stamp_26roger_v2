@@ -271,7 +271,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     <div class="page-title">정산 통계</div>
     <div class="card">
       <div class="card-title">배우별 관람 횟수</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 표 제외, 동일 시각 기록은 좌석 있는 표 1개만 산정 (좌석 없는 회차는 통계 제외)</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 표 및 좌석이 없는 회차는 통계 제외</div>
       <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);" id="stats-actors"></table>
     </div>
     
@@ -291,7 +291,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     
     <div class="card">
       <div class="card-title">관극 회차</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 실관람 기록 중 좌석 정보가 있는 표만 표시 (교환 제외)</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 실관람 기록 중 좌석 정보가 있는 표만 표시</div>
       <div class="twrap" style="margin:0; padding:0;">
         <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);">
           <thead>
@@ -1212,7 +1212,7 @@ function renderCoupons() {
             id: 'auto_ms_' + r.id + '_' + bid,
             date: r.date, time: r.time, type: 'add',
             items: { d50: 1 },
-            memo: "3🎁 50% 할인권 획득", // 직관적인 메모로 수정 완료
+            memo: "3🎁 50% 할인권 획득", 
             isAuto: true, order: 2
           });
         }
@@ -1453,12 +1453,10 @@ function renderStats() {
 
   for (let k in grouped) {
     let grp = grouped[k];
-    if (grp.length === 1) {
-      validRecords.push(grp[0]);
-    } else {
-      let seated = grp.find(x => x.seatZone && x.seatRow !== "" && x.seatNum !== "");
-      if (!seated) seated = grp.find(x => x.seatZone);
-      validRecords.push(seated || grp[0]);
+    let seatedRecords = grp.filter(x => x.seatZone && x.seatZone.trim() !== "");
+    if (seatedRecords.length > 0) {
+      let detailedSeat = seatedRecords.find(x => x.seatRow !== "" && x.seatNum !== "");
+      validRecords.push(detailedSeat || seatedRecords[0]);
     }
   }
 
