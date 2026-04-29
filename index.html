@@ -178,7 +178,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .legend-item { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--txt2); }
 .legend-dot { width:12px; height:12px; border-radius:2px; }
 
-/* CD ANIMATION & STYLE */
+/* CD ANIMATION & STYLE (밝고 화사한 은백색 테마) */
 @keyframes cd-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -186,29 +186,37 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
 .cd-record {
   width: 65px; height: 65px;
   border-radius: 50%;
-  background: conic-gradient(#111, #3a3a3a, #111, #3a3a3a, #111);
+  /* 밝은 톤의 그라데이션 */
+  background: conic-gradient(
+    #f8f9fa 0deg, #e9ecef 45deg, #dee2e6 90deg, 
+    #f8f9fa 135deg, #e9ecef 180deg, #dee2e6 225deg, 
+    #f8f9fa 270deg, #e9ecef 315deg, #f8f9fa 360deg
+  );
   position: relative;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.6), inset 0 0 2px rgba(255,255,255,0.4);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 4px rgba(255,255,255,0.8);
   animation: cd-spin 4s linear infinite;
   flex-shrink: 0;
 }
+/* CD 안쪽 반짝이는 디테일 선 */
 .cd-record::before {
   content: '';
   position: absolute;
-  inset: 4px;
+  inset: 5px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
 }
+/* CD 중앙 구멍 (투명하게 뚫린 듯한 효과) */
 .cd-record::after {
   content: '';
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 16px; height: 16px;
-  background: var(--bg2);
+  width: 14px; height: 14px;
+  background: var(--bg2); /* 배경색과 동일하게 */
   border-radius: 50%;
-  border: 2px solid #555;
-  box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+  border: 2px solid #ced4da;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
 }
 </style>
 </head>
@@ -385,6 +393,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
   <div class="modal">
     <div class="page-title" id="rm-title" style="font-size:18px;">회차 기록</div>
     <input type="hidden" id="rm-id">
+    <input type="hidden" id="rm-create-time">
     
     <div style="display:flex; gap:10px;">
       <div class="fg" style="flex:1;">
@@ -470,6 +479,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
   <div class="modal">
     <div class="page-title" id="wm-title" style="font-size:18px;">할인권 내역</div>
     <input type="hidden" id="wm-id">
+    <input type="hidden" id="wm-create-time">
     <div class="fg"><label class="flbl">날짜</label><input type="date" id="wm-date" class="finput"></div>
     
     <div class="fg">
@@ -617,7 +627,11 @@ function renderRecords() {
   thHtml += `<th>관리</th></tr>`;
   document.getElementById('record-thead').innerHTML = thHtml;
 
-  let sorted = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  let sorted = [...state.records].sort((a,b) => {
+    return a.date.localeCompare(b.date) || 
+           a.time.localeCompare(b.time) ||
+           (a.createTime || 0) - (b.createTime || 0);
+  });
   
   if (hideExchange) {
     sorted = sorted.filter(r => r.discount !== '교환' && r.discount !== '교환/나눔');
@@ -654,7 +668,6 @@ function renderRecords() {
     }
 
     const dispDisc = formatDiscount(r.discount);
-    
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
     const dimCls = isExchange ? 'opacity: 0.3;' : '';
 
@@ -782,6 +795,7 @@ function addBoardFromModal() {
 function openRecordModal(date = '', isEdit = false) {
   document.getElementById('rm-title').textContent = "회차 기록 추가";
   document.getElementById('rm-id').value = "";
+  document.getElementById('rm-create-time').value = Date.now(); 
   document.getElementById('rm-date').value = date || todayStr();
   
   if (!isEdit) autoFillCasting();
@@ -800,6 +814,7 @@ function openRecordModal(date = '', isEdit = false) {
 
 function saveRecord() {
   const id = document.getElementById('rm-id').value || uuid();
+  const cTime = document.getElementById('rm-create-time').value;
   const boardsData = {};
   
   const mult = parseInt(document.querySelector('input[name="rm-mult"]:checked').value) || 1;
@@ -809,6 +824,7 @@ function saveRecord() {
 
   const record = {
     id: id,
+    createTime: parseInt(cTime) || Date.now(),
     date: document.getElementById('rm-date').value,
     time: document.getElementById('rm-time').value,
     cast1: document.getElementById('rm-cast1').value,
@@ -835,6 +851,7 @@ function editRecord(id) {
   openRecordModal('', true);
   document.getElementById('rm-title').textContent = "회차 기록 수정";
   document.getElementById('rm-id').value = r.id;
+  document.getElementById('rm-create-time').value = r.createTime || Date.now();
   document.getElementById('rm-date').value = r.date;
   
   autoFillCasting();
@@ -1165,29 +1182,26 @@ function calculateWalletBalances() {
   return { current, final };
 }
 
-// 배열 자체의 순서를 직접 교환(스왑)하여 UI가 즉각 갱신되도록 수정한 로직
+// 순서 변경 로직 수정: 모든 항목에 고유한 order 값을 강제 재배정 후 교환
 function moveWalletOrder(id, delta) {
   const item = state.wallet.find(w => w.id === id);
   if (!item) return;
 
-  // 1. 같은 날짜의 수동 아이템만 찾아서 현재 정렬 상태로 가져오기
-  let siblings = state.wallet.filter(w => w.date === item.date);
+  // 1. 같은 날짜의 수동 기록만 모아서 현재 보이는 순서대로 정렬
+  let siblings = state.wallet.filter(w => w.date === item.date && !w.isAuto);
   siblings.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  // 2. 꼬여있는 order 값을 10 단위로 깔끔하게 초기화
+  siblings.forEach((w, idx) => w.order = (idx + 1) * 10);
 
   const currIdx = siblings.findIndex(w => w.id === id);
   const targetIdx = currIdx + delta;
 
-  // 2. 바꿀 수 있는 대상이 존재한다면, 그 두 아이템의 order를 맞교환
+  // 3. 바꿀 대상이 배열 범위 내에 있다면 서로의 order 값을 맞교환
   if (targetIdx >= 0 && targetIdx < siblings.length) {
-    // 만약 둘 다 기본값 0이라 겹쳐있다면 10, 20... 으로 임의 배정 먼저 해줌
-    if (siblings[currIdx].order === siblings[targetIdx].order) {
-       siblings.forEach((s, idx) => { s.order = (idx + 1) * 10; });
-    }
-    
-    // 순서 스왑
-    const tempOrder = siblings[currIdx].order;
+    const temp = siblings[currIdx].order;
     siblings[currIdx].order = siblings[targetIdx].order;
-    siblings[targetIdx].order = tempOrder;
+    siblings[targetIdx].order = temp;
     
     saveState();
     renderCoupons();
@@ -1198,9 +1212,9 @@ function renderCoupons() {
   const bals = calculateWalletBalances();
   
   const getColor = (val) => {
-    if(val > 0) return 'var(--grn)'; // 양수 노란색
-    if(val < 0) return 'var(--red3)'; // 음수 하늘색
-    return 'var(--txt3)'; // 0은 회색
+    if(val > 0) return 'var(--grn)'; 
+    if(val < 0) return 'var(--red3)'; 
+    return 'var(--txt3)'; 
   };
 
   document.getElementById('wallet-cards').innerHTML = CONFIG.WALLET_FIELDS.map(f => {
@@ -1230,7 +1244,11 @@ function renderCoupons() {
   
   let boardCum = {};
   state.boards.forEach(b => boardCum[b.id] = b.initial || 0);
-  let sortedRecords = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  let sortedRecords = [...state.records].sort((a,b) => {
+    return a.date.localeCompare(b.date) || 
+           a.time.localeCompare(b.time) ||
+           (a.createTime || 0) - (b.createTime || 0);
+  });
 
   sortedRecords.forEach(r => {
     const dateParts = r.date.split('-');
@@ -1246,13 +1264,13 @@ function renderCoupons() {
         items[discDef.useWallet] = 1;
         combinedWallet.push({
           id: 'auto_sub_' + r.id, date: r.date, time: r.time, type: 'sub', items: items,
-          memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, isAuto: true, order: -1 
+          memo: `${m}/${d} ${r.time} ${discDef.label} 사용`, isAuto: true, order: -2 
         });
       }
 
       combinedWallet.push({
         id: 'auto_add_' + r.id, date: r.date, time: r.time, type: 'add', items: { re: 1 },
-        memo: `${m}/${d} ${r.time} 관극 획득`, isAuto: true, order: -0.5 
+        memo: `${m}/${d} ${r.time} 관극 획득`, isAuto: true, order: -1 
       });
     }
 
@@ -1266,7 +1284,7 @@ function renderCoupons() {
             date: r.date, time: r.time, type: 'add',
             items: { d50: 1 },
             memo: "3🎁 50% 할인권 획득", 
-            isAuto: true, order: 0 
+            isAuto: true, order: 9999999 // 그 날짜의 가장 마지막으로 밀어냄
           });
         }
       });
@@ -1275,10 +1293,13 @@ function renderCoupons() {
 
   combinedWallet.sort((a,b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date); 
+    
+    // 수동 기록끼리 먼저 정렬되도록 isAuto 여부 확인
+    if (!a.isAuto && !b.isAuto) return (a.order || 0) - (b.order || 0);
+    
+    // 자동과 섞여있다면 시간 우선, 그 다음 order
     const timeA = a.time || "";
     const timeB = b.time || "";
-    // 자동 연동이 아니라 수동 입력된 내역들끼리는 부여된 order 값으로 정렬
-    if (timeA === "" && timeB === "") return (a.order || 0) - (b.order || 0);
     if (timeA !== timeB) return timeA.localeCompare(timeB);
     return (a.order || 0) - (b.order || 0);
   });
@@ -1332,6 +1353,7 @@ function selectWmType(val) {
 function openWalletModal() {
   document.getElementById('wm-title').textContent = "할인권 추가/차감";
   document.getElementById('wm-id').value = "";
+  document.getElementById('wm-create-time').value = Date.now();
   document.getElementById('wm-date').value = todayStr();
   selectWmType('add');
   document.getElementById('wm-memo').value = "";
@@ -1341,6 +1363,7 @@ function openWalletModal() {
 
 function saveWallet() {
   const id = document.getElementById('wm-id').value || uuid();
+  const cTime = document.getElementById('wm-create-time').value;
   let items = {};
   let hasValue = false;
   CONFIG.WALLET_FIELDS.forEach(f => {
@@ -1350,10 +1373,12 @@ function saveWallet() {
   if(!hasValue) { alert("수량을 1개 이상 입력하세요."); return; }
 
   const entry = {
-    id: id, date: document.getElementById('wm-date').value,
+    id: id, 
+    date: document.getElementById('wm-date').value,
     type: document.querySelector('input[name="wm-type"]:checked').value,
-    memo: document.getElementById('wm-memo').value, items: items, 
-    order: Date.now() // 신규 생성 시 가장 아래에 배치되도록 시간값 부여
+    memo: document.getElementById('wm-memo').value, 
+    items: items, 
+    order: parseInt(cTime) || Date.now() // 고유 순서값 부여
   };
   const idx = state.wallet.findIndex(w => w.id === id);
   if(idx >= 0) { entry.order = state.wallet[idx].order || Date.now(); state.wallet[idx] = entry; } 
@@ -1366,6 +1391,7 @@ function editWallet(id) {
   if(!w) return;
   document.getElementById('wm-title').textContent = "할인권 내역 수정";
   document.getElementById('wm-id').value = w.id;
+  document.getElementById('wm-create-time').value = w.order || Date.now();
   document.getElementById('wm-date').value = w.date;
   selectWmType(w.type);
   document.getElementById('wm-memo').value = w.memo;
@@ -1436,7 +1462,7 @@ function renderBoardStatus() {
     if (cCnt >= 7) currOst++;
     if (fCnt >= 7) finalOst++;
 
-    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cCnt);
+    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cCnt); // 텍스트도 현재 개수 기준 (cCnt)
     const pct = Math.min(100, (cCnt / maxMilestone) * 100); 
     
     let histRows = state.records
@@ -1457,7 +1483,7 @@ function renderBoardStatus() {
       return 'var(--txt3)';
     };
 
-    // 현재 개수 기준으로 안내 문구 출력
+    // 현재 개수(cCnt) 기준으로 안내 문구 출력
     let statusMsg = '';
     if (cCnt >= 7) {
        statusMsg = `<span style="color:var(--grn);">✓ 도장판 완료 (실황 OST 획득)</span>`;
@@ -1499,7 +1525,7 @@ function renderBoardStatus() {
     </div>`;
   }).join('');
   
-  // OST 현황 배너에 CD 디자인 적용
+  // OST 현황 배너 디자인 (밝은 은백색 테마)
   document.getElementById('ost-container').innerHTML = `
     <div style="width:100%; display:flex; align-items:center; background:linear-gradient(135deg, var(--bg3), var(--bg2)); border:1px solid var(--brd2); border-radius:8px; padding:16px; gap:20px; overflow:hidden;">
       
