@@ -310,7 +310,7 @@ table.record-tb { width:max-content; min-width:100%; border-collapse:separate; b
     <div class="page-title">정산 통계</div>
     <div class="card">
       <div class="card-title">배우별 관람 횟수</div>
-      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환 표 및 좌석이 없는 회차는 통계 제외</div>
+      <div style="font-size:10px; color:var(--txt4); margin-bottom:8px;">* 교환, 나눔 표 및 좌석이 없는 회차는 통계 제외</div>
       <table class="record-tb" style="width:100%; border-left:1px solid var(--brd); border-top:1px solid var(--brd);" id="stats-actors"></table>
     </div>
     
@@ -551,7 +551,7 @@ let state = {
   records: [], 
   boards: [{ id: "b1", name: "1", initial: 0, active: true }],
   wallet: [], 
-  walletOrder: {}, // 수동-자동 스왑을 기억할 전용 딕셔너리
+  walletOrder: {}, // 스왑 내역 로드 저장용
   schedule: [],
   events: []
 };
@@ -566,7 +566,7 @@ function loadState() {
     state.records = parsed.records || [];
     state.boards = parsed.boards || [{ id: "b1", name: "1", initial: 0, active: true }];
     state.wallet = parsed.wallet || [];
-    state.walletOrder = parsed.walletOrder || {}; // 스왑 내역 로드
+    state.walletOrder = parsed.walletOrder || {}; 
     state.schedule = parsed.schedule || [];
     state.events = parsed.events || [];
   }
@@ -1185,7 +1185,6 @@ function calculateWalletBalances() {
 function getCombinedWallet() {
   let combined = [];
   
-  // 수동 기록 불러오기 (초기 생성 시간 또는 지정된 order 유지)
   state.wallet.forEach(w => {
      combined.push({
        ...w, 
@@ -1199,7 +1198,6 @@ function getCombinedWallet() {
 
   let sortedRecords = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
-  // 자동 기록 생성
   sortedRecords.forEach(r => {
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
 
@@ -1252,7 +1250,6 @@ function getCombinedWallet() {
   return combined;
 }
 
-// 통합 리스트 내에서 순서(위/아래) 스왑을 완벽하게 처리
 function moveWalletOrder(id, delta, dateStr) {
   let combined = getCombinedWallet();
   let siblings = combined.filter(w => w.date === dateStr);
@@ -1271,15 +1268,12 @@ function moveWalletOrder(id, delta, dateStr) {
   if (targetIdx >= 0 && targetIdx < siblings.length) {
     if(!state.walletOrder) state.walletOrder = {};
     
-    // 순서가 꼬여있거나 겹쳐있을 수 있으므로 먼저 10 단위로 깔끔하게 초기화
     siblings.forEach((w, idx) => w.sortVal = idx * 10);
     
-    // 타겟과 서로 sortVal을 바꿈
     const temp = siblings[currIdx].sortVal;
     siblings[currIdx].sortVal = siblings[targetIdx].sortVal;
     siblings[targetIdx].sortVal = temp;
 
-    // 변경된 정렬 값을 영구 저장
     siblings.forEach(w => {
        state.walletOrder[w.id] = w.sortVal;
     });
@@ -1322,7 +1316,6 @@ function renderCoupons() {
 
   let combinedWallet = getCombinedWallet();
 
-  // 날짜 > 커스텀 정렬값(sortVal) > 시간 순으로 정렬
   combinedWallet.sort((a,b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date); 
     if (a.sortVal !== b.sortVal) return a.sortVal - b.sortVal;
@@ -1351,13 +1344,18 @@ function renderCoupons() {
         colHtml += `<td>${valStr}</td>`;
       });
       
-      let ctrlHtml = w.isAuto ? `<span style="font-size:10px; color:var(--dim);">자동 연동</span>` : `
-          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', 1, '${w.date}')">▼</button>
-          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', -1, '${w.date}')">▲</button>
+      // 자동 연동 내역이든 수동이든 모두 자리 바꿈 기능(스왑 대상)으로 작동
+      let editDelBtn = w.isAuto ? `<span style="font-size:10px; color:var(--dim);">자동 연동</span>` : `
           <button class="btn sm" onclick="editWallet('${w.id}')" style="padding:2px 4px; margin-left:6px;">✎</button>
           <button class="btn sm" onclick="deleteWallet('${w.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
+      `;
+
+      let ctrlHtml = `
+          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', 1, '${w.date}')">▼</button>
+          <button class="btn sm ghost" style="padding:2px 6px; font-size:9px;" onclick="moveWalletOrder('${w.id}', -1, '${w.date}')">▲</button>
+          ${editDelBtn}
         `;
-      return `<tr><td>${dateDisp}</td><td>${typeHtml}</td>${colHtml}<td style="text-align:left;">${w.memo}</td><td>${ctrlHtml}</td></tr>`;
+      return `<tr><td>${dateDisp}</td><td>${typeHtml}</td>${colHtml}<td style="text-align:left;">${w.memo}</td><td style="white-space:nowrap;">${ctrlHtml}</td></tr>`;
     }).join('');
   }
   renderBoardStatus();
@@ -1406,7 +1404,7 @@ function saveWallet() {
     type: document.querySelector('input[name="wm-type"]:checked').value,
     memo: document.getElementById('wm-memo').value, 
     items: items, 
-    createTime: parseInt(cTime) || Date.now() // 수동 기록의 초기 생성 시간
+    createTime: parseInt(cTime) || Date.now() 
   };
   const idx = state.wallet.findIndex(w => w.id === id);
   if(idx >= 0) { entry.order = state.wallet[idx].order; state.wallet[idx] = entry; } 
@@ -1490,7 +1488,7 @@ function renderBoardStatus() {
     if (cCnt >= 7) currOst++;
     if (fCnt >= 7) finalOst++;
 
-    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cCnt); // 텍스트도 현재 개수 기준 (cCnt)
+    const nxt = CONFIG.STAMP_MILESTONES.find(m => m > cCnt); 
     const pct = Math.min(100, (cCnt / maxMilestone) * 100); 
     
     let histRows = state.records
@@ -1511,7 +1509,6 @@ function renderBoardStatus() {
       return 'var(--txt3)';
     };
 
-    // 현재 개수(cCnt) 기준으로 안내 문구 출력
     let statusMsg = '';
     if (cCnt >= 7) {
        statusMsg = `<span style="color:var(--grn);">✓ 도장판 완료 (실황 OST 획득)</span>`;
@@ -1553,7 +1550,7 @@ function renderBoardStatus() {
     </div>`;
   }).join('');
   
-  // OST 현황 배너 디자인 (밝은 은백색 테마)
+  // OST 현황 배너 디자인 (밝은 은백색 테마 수정)
   document.getElementById('ost-container').innerHTML = `
     <div style="width:100%; display:flex; align-items:center; background:linear-gradient(135deg, var(--bg3), var(--bg2)); border:1px solid var(--brd2); border-radius:8px; padding:16px; gap:20px; overflow:hidden;">
       
