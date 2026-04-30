@@ -1185,6 +1185,7 @@ function calculateWalletBalances() {
 function getCombinedWallet() {
   let combined = [];
   
+  // 수동 기록 
   state.wallet.forEach(w => {
      combined.push({
        ...w, 
@@ -1195,9 +1196,9 @@ function getCombinedWallet() {
   
   let boardCum = {};
   state.boards.forEach(b => boardCum[b.id] = b.initial || 0);
-
   let sortedRecords = [...state.records].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
+  // 자동 기록 생성
   sortedRecords.forEach(r => {
     const isExchange = (r.discount === '교환' || r.discount === '교환/나눔');
 
@@ -1250,8 +1251,10 @@ function getCombinedWallet() {
   return combined;
 }
 
+// 수동-자동 혼합된 리스트 내에서 위아래 순서 스왑 로직
 function moveWalletOrder(id, delta, dateStr) {
   let combined = getCombinedWallet();
+  // 같은 날짜의 모든 항목(자동+수동)을 긁어모아 현재 보이는 순서대로 정렬
   let siblings = combined.filter(w => w.date === dateStr);
 
   siblings.sort((a,b) => {
@@ -1265,15 +1268,19 @@ function moveWalletOrder(id, delta, dateStr) {
   if (currIdx < 0) return;
   const targetIdx = currIdx + delta;
 
+  // 바꿀 대상이 존재하면 스왑 실행
   if (targetIdx >= 0 && targetIdx < siblings.length) {
     if(!state.walletOrder) state.walletOrder = {};
     
+    // 순서가 꼬여있을 수 있으므로 10 단위로 깔끔하게 초기화 (모든 항목에 대해)
     siblings.forEach((w, idx) => w.sortVal = idx * 10);
     
+    // 타겟과 서로 sortVal(순서값)을 교환
     const temp = siblings[currIdx].sortVal;
     siblings[currIdx].sortVal = siblings[targetIdx].sortVal;
     siblings[targetIdx].sortVal = temp;
 
+    // 변경된 값을 영구 저장 (자동 기록의 순서도 저장됨)
     siblings.forEach(w => {
        state.walletOrder[w.id] = w.sortVal;
     });
@@ -1316,6 +1323,7 @@ function renderCoupons() {
 
   let combinedWallet = getCombinedWallet();
 
+  // 렌더링용 최종 정렬: 날짜 > 지정된 순서값(sortVal) > 시간
   combinedWallet.sort((a,b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date); 
     if (a.sortVal !== b.sortVal) return a.sortVal - b.sortVal;
@@ -1344,8 +1352,9 @@ function renderCoupons() {
         colHtml += `<td>${valStr}</td>`;
       });
       
-      // 자동 연동 내역이든 수동이든 모두 자리 바꿈 기능(스왑 대상)으로 작동
-      let editDelBtn = w.isAuto ? `<span style="font-size:10px; color:var(--dim);">자동 연동</span>` : `
+      // 수동 입력일 때만 조작 버튼(수정, 삭제) 표시 
+      // (순서 바꾸기 버튼은 모두 표시하여 자리바꿈 앵커 역할 수행)
+      let editDelBtn = w.isAuto ? `<span style="font-size:10px; color:var(--dim); margin-left:4px;">자동 연동</span>` : `
           <button class="btn sm" onclick="editWallet('${w.id}')" style="padding:2px 4px; margin-left:6px;">✎</button>
           <button class="btn sm" onclick="deleteWallet('${w.id}')" style="padding:2px 4px; color:var(--red3);">✕</button>
       `;
@@ -1550,7 +1559,7 @@ function renderBoardStatus() {
     </div>`;
   }).join('');
   
-  // OST 현황 배너 디자인 (밝은 은백색 테마 수정)
+  // OST 현황 배너 디자인 (밝은 화이트/실버 톤으로 변경)
   document.getElementById('ost-container').innerHTML = `
     <div style="width:100%; display:flex; align-items:center; background:linear-gradient(135deg, var(--bg3), var(--bg2)); border:1px solid var(--brd2); border-radius:8px; padding:16px; gap:20px; overflow:hidden;">
       
@@ -1588,6 +1597,10 @@ function renderStats() {
 
   state.records.forEach(r => {
     if (r.discount === '교환' || r.discount === '교환/나눔' || r.discount === '나눔') return;
+    
+    // 💡 구역이 비어있으면 아예 제외 (입구컷)
+    if (!r.seatZone || r.seatZone.trim() === "") return;
+    
     let k = r.date + '_' + r.time;
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(r);
@@ -1598,8 +1611,7 @@ function renderStats() {
     if (grp.length === 1) {
       validRecords.push(grp[0]);
     } else {
-      let seated = grp.find(x => x.seatZone && x.seatRow !== "" && x.seatNum !== "");
-      if (!seated) seated = grp.find(x => x.seatZone);
+      let seated = grp.find(x => x.seatRow !== "" && x.seatNum !== "");
       validRecords.push(seated || grp[0]);
     }
   }
